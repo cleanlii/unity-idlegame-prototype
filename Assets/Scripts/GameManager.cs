@@ -60,7 +60,7 @@ public class GameManager : MonoBehaviour
         {
             _instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeGame();
+            InitializeService();
         }
         else
             Destroy(gameObject);
@@ -98,7 +98,7 @@ public class GameManager : MonoBehaviour
 
     #region 初始化
 
-    private void InitializeGame()
+    private void InitializeService()
     {
         Debug.Log("[GameManager] Starting game initialization...");
 
@@ -113,6 +113,11 @@ public class GameManager : MonoBehaviour
         ServiceLocator.Register(characterSystem);
     }
 
+    private void InitializeGameplay()
+    {
+        characterSystem.Initialize();
+    }
+
     private IEnumerator DelayedInitialization()
     {
         yield return new WaitForEndOfFrame();
@@ -122,6 +127,9 @@ public class GameManager : MonoBehaviour
 
         // 计算离线时间和奖励
         HandleOfflineProgress();
+
+        yield return new WaitForEndOfFrame();
+        InitializeGameplay();
 
         // 启动自动保存
         StartAutoSave();
@@ -475,6 +483,19 @@ public class GameManager : MonoBehaviour
     {
         Debug.LogError($"[GameManager] Save error: {error}");
         logSystem?.LogMessage($"保存出错：{error}");
+    }
+
+    #endregion
+
+    #region 辅助方法
+
+    /// <summary>
+    ///     记录日志消息
+    /// </summary>
+    private void LogMessage(string message)
+    {
+        logSystem?.LogMessage(message);
+        Debug.Log($"[GameManager] {message}");
     }
 
     #endregion

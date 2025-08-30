@@ -28,6 +28,8 @@ namespace IdleGame.Character
         public long totalDamageDealt;
         public long totalDamageTaken;
 
+        public bool IsNull => config == null;
+
         // 缓存的计算属性 (避免重复计算)
         private float _cachedMaxHP = -1f;
         private float _cachedAttack = -1f;
@@ -137,12 +139,19 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     获得经验值
+        /// 获得经验值
         /// </summary>
         public bool GainExperience(long expAmount)
         {
+            if (expAmount <= 0) return false;
+
             totalExperience += expAmount;
-            return CheckLevelUp();
+            bool leveledUp = CheckLevelUp();
+            
+            // 重新计算当前等级经验
+            RefreshCurrentLevelExp();
+            
+            return leveledUp;
         }
 
         /// <summary>
@@ -168,6 +177,18 @@ namespace IdleGame.Character
             }
 
             return leveledUp;
+        }
+        
+        /// <summary>
+        /// 刷新当前等级经验
+        /// </summary>
+        private void RefreshCurrentLevelExp()
+        {
+            long expForCurrentLevel = config.CalculateExpRequired(level);
+            currentLevelExp = totalExperience - expForCurrentLevel;
+            
+            // 确保当前等级经验不为负数
+            if (currentLevelExp < 0) currentLevelExp = 0;
         }
 
         #endregion

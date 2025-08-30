@@ -30,7 +30,6 @@ namespace IdleGame.Gameplay
         private void Start()
         {
             logSystem = ServiceLocator.Get<IdleLogSystem>();
-            InitializeCharacterSystem();
         }
 
         #region 初始化
@@ -38,7 +37,7 @@ namespace IdleGame.Gameplay
         /// <summary>
         ///     初始化角色系统
         /// </summary>
-        private void InitializeCharacterSystem()
+        public void Initialize()
         {
             // 加载玩家已拥有的角色数据
             LoadOwnedCharacters();
@@ -47,10 +46,10 @@ namespace IdleGame.Gameplay
             if (ownedCharacters.Count == 0) CreateDefaultCharacter();
 
             // 设置当前角色
-            if (currentCharacter == null)
+            if (currentCharacter.IsNull)
             {
-                var firstCharacter = ownedCharacters.Values.FirstOrDefault();
-                SetCurrentCharacter(firstCharacter);
+                var defaultCharacter = new CharacterData(characterDb.defaultCharacter);
+                SetCurrentCharacter(defaultCharacter);
             }
 
             LogMessage($"角色系统初始化完成，当前角色：{currentCharacter?.GetCharacterInfo()}");
@@ -74,19 +73,71 @@ namespace IdleGame.Gameplay
         /// </summary>
         private void LoadOwnedCharacters()
         {
-            // 这里应该从PlayerData或存档系统加载
-            // 暂时留空，实际实现时需要加载存档数据
-
-            // 示例：从PlayerData加载
             var gameManager = GameManager.Instance;
-            if (gameManager != null && gameManager.playerData != null)
+            if (gameManager?.playerData == null) return;
+
+            var playerData = gameManager.playerData;
+
+            // 清空现有角色数据
+            ownedCharacters.Clear();
+
+            // 从PlayerData加载角色
+            foreach (var characterSave in playerData.ownedCharacters)
             {
-                foreach (var characterSave in gameManager.playerData.ownedCharacters)
+                // 根据configID找到对应的配置
+                var config = FindCharacterConfig(characterSave.configID);
+                if (config != null)
                 {
-                    // 这里需要根据存档数据重建CharacterData
-                    // 暂时跳过具体实现
+                    // 使用存档数据创建CharacterData
+                    var characterData = new CharacterData(config, characterSave.level, characterSave.totalExperience);
+
+                    // 恢复战斗统计数据
+                    characterData.totalBattles = characterSave.totalBattles;
+                    characterData.victoriesCount = characterSave.victoriesCount;
+                    characterData.totalDamageDealt = characterSave.totalDamageDealt;
+                    characterData.totalDamageTaken = characterSave.totalDamageTaken;
+
+                    ownedCharacters[characterSave.configID] = characterData;
+                    LogMessage($"加载角色：{characterData.GetCharacterInfo()}");
+                }
+                else
+                    LogMessage($"警告：未找到角色配置 {characterSave.configID}");
+            }
+
+            // 设置当前角色
+            if (!string.IsNullOrEmpty(playerData.currentCharacterID))
+            {
+                if (ownedCharacters.ContainsKey(playerData.currentCharacterID))
+                    SetCurrentCharacter(ownedCharacters[playerData.currentCharacterID]);
+                else
+                {
+                    LogMessage($"警告：当前角色ID {playerData.currentCharacterID} 未找到，使用默认角色");
+                    SetDefaultCurrentCharacter();
                 }
             }
+            else
+                SetDefaultCurrentCharacter();
+        }
+
+        /// <summary>
+        ///     根据ID查找角色配置
+        /// </summary>
+        private CharacterConfig FindCharacterConfig(string configID)
+        {
+            // 尝试从CharacterDatabase查找
+            var database = FindObjectOfType<CharacterDatabase>();
+            if (database != null) return database.GetCharacterConfig(configID);
+
+            return null;
+        }
+
+        /// <summary>
+        ///     设置默认当前角色
+        /// </summary>
+        private void SetDefaultCurrentCharacter()
+        {
+            var firstCharacter = ownedCharacters.Values.FirstOrDefault();
+            if (firstCharacter != null) SetCurrentCharacter(firstCharacter);
         }
 
         #endregion
@@ -98,15 +149,12 @@ namespace IdleGame.Gameplay
         /// </summary>
         public void AddCharacter(CharacterData character)
         {
-            if (character?.config == null) return;
+            if (!character?.config) return;
 
             var characterID = character.config.characterID;
 
-            if (!ownedCharacters.ContainsKey(characterID))
-            {
-                ownedCharacters[characterID] = character;
+            if (ownedCharacters.TryAdd(characterID, character))
                 LogMessage($"获得新角色：{character.GetCharacterInfo()}");
-            }
             else
                 LogMessage($"角色已拥有：{character.config.characterName}");
         }
@@ -179,7 +227,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public void GainExperience(long expAmount)
         {
-            if (currentCharacter == null || expAmount <= 0) return;
+            if (currentCharacter.IsNull || expAmount <= 0) return;
 
             var oldLevel = currentCharacter.level;
             var leveledUp = currentCharacter.GainExperience(expAmount);
@@ -223,7 +271,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public float TakeDamage(float damage)
         {
-            if (currentCharacter == null) return 0f;
+            if (currentCharacter.IsNull) return 0f;
 
             var actualDamage = currentCharacter.TakeDamage(damage);
             LogMessage($"受到伤害：{actualDamage:F1}，剩余HP：{currentCharacter.currentHP:F0}/{currentCharacter.GetMaxHP():F0}");
@@ -242,7 +290,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public float DealDamage()
         {
-            if (currentCharacter == null) return 0f;
+            if (currentCharacter.IsNull) return 0f;
 
             var damage = currentCharacter.GetAttackDamage();
             LogMessage($"造成伤害：{damage:F1}");
@@ -254,7 +302,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public void RestoreHP()
         {
-            if (currentCharacter == null) return;
+            if (currentCharacter.IsNull) return;
 
             currentCharacter.RestoreFullHP();
             LogMessage($"{currentCharacter.config.characterName} HP完全恢复：{currentCharacter.currentHP:F0}");
@@ -265,7 +313,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public void RecordBattleResult(bool victory, long damageDealt)
         {
-            if (currentCharacter == null) return;
+            if (currentCharacter.IsNull) return;
 
             currentCharacter.RecordBattleResult(victory, damageDealt);
 
@@ -282,7 +330,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public string GetCurrentCharacterDisplayInfo()
         {
-            if (currentCharacter == null) return "无角色";
+            if (currentCharacter.IsNull) return "无角色";
 
             return $"{currentCharacter.config.characterName}\n" +
                    $"等级：{currentCharacter.level}\n" +
@@ -296,7 +344,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public string GetCharacterStats()
         {
-            if (currentCharacter == null) return "";
+            if (currentCharacter.IsNull) return "";
 
             return $"攻击力：{currentCharacter.GetAttack():F0}\n" +
                    $"防御力：{currentCharacter.GetDefense():F0}\n" +
@@ -309,7 +357,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         public bool CanLevelUp()
         {
-            if (currentCharacter == null) return false;
+            if (currentCharacter.IsNull) return false;
 
             var expNeeded = currentCharacter.GetExpToNextLevel();
             return expNeeded > 0 && currentCharacter.totalExperience >= expNeeded;
