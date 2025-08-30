@@ -1,141 +1,211 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace IdleGame.Character
 {
+    /// <summary>
+    ///     角色数据类 - 存储角色的运行时状态和升级信息
+    ///     基于CharacterConfig配置，包含当前状态（血量、经验等）
+    /// </summary>
+    [Serializable]
     public class CharacterData
     {
-        [Header("基础信息")]
-        public string characterID; // 角色唯一ID
-        public string characterName; // 角色名称
-        public CharacterRarity rarity; // 稀有度
-        public int level = 1; // 当前等级
-        public long experience = 0; // 当前经验值
-        public long expToNextLevel = 100; // 升级所需经验
+        [Header("配置引用")]
+        public CharacterConfig config; // 角色配置引用
 
-        [Header("战斗属性")]
-        public float maxHP = 100f; // 最大生命值
-        public float currentHP = 100f; // 当前生命值
-        public float baseAttack = 20f; // 基础攻击力
-        public float baseDefense = 10f; // 基础防御力
-        public float criticalRate = 0.1f; // 暴击率 (10%)
-        public float criticalDamage = 1.5f; // 暴击伤害倍率
-        public float attackSpeed = 1f; // 攻击速度
+        [Header("持久化数据")]
+        public int level = 1; // 当前等级 (持久化)
+        public long totalExperience; // 总经验值 (持久化)
 
-        [Header("成长属性")]
-        public float hpGrowth = 25f; // 每级HP增长
-        public float attackGrowth = 5f; // 每级攻击增长
-        public float defenseGrowth = 2f; // 每级防御增长
+        [Header("运行时状态 - 仅当前角色有效")]
+        public float currentHP; // 当前生命值 (运行时，切换角色时重置)
+        public long currentLevelExp; // 当前等级经验 (运行时)
 
-        [Header("稀有度加成")]
-        public float rarityHPMultiplier = 1f; // 稀有度HP倍率
-        public float rarityAttackMultiplier = 1f; // 稀有度攻击倍率
-        public float rarityDefenseMultiplier = 1f; // 稀有度防御倍率
+        [Header("战斗统计 - 持久化")]
+        public int totalBattles;
+        public int victoriesCount;
+        public long totalDamageDealt;
+        public long totalDamageTaken;
 
-        [Header("战斗统计")]
-        public int totalBattles = 0; // 总战斗次数
-        public int victoriesCount = 0; // 胜利次数
-        public long totalDamageDealt = 0; // 总造成伤害
-        public long totalDamageTaken = 0; // 总承受伤害
+        // 缓存的计算属性 (避免重复计算)
+        private float _cachedMaxHP = -1f;
+        private float _cachedAttack = -1f;
+        private float _cachedDefense = -1f;
+        private float _cachedCritRate = -1f;
+        private int _lastCalculatedLevel = -1;
 
-        // 构造函数
-        public CharacterData()
+        /// <summary>
+        ///     基于配置创建角色数据
+        /// </summary>
+        public CharacterData(CharacterConfig characterConfig)
         {
-            InitializeRarityMultipliers();
-            RecalculateStats();
+            config = characterConfig;
+            level = 1;
+            totalExperience = 0;
+            RefreshRuntimeState();
         }
 
-        public CharacterData(string id, string name, CharacterRarity rarity)
+        /// <summary>
+        ///     序列化构造函数（用于存档加载）
+        /// </summary>
+        public CharacterData(CharacterConfig characterConfig, int savedLevel, long savedExp)
         {
-            this.characterID = id;
-            this.characterName = name;
-            this.rarity = rarity;
-            InitializeRarityMultipliers();
-            RecalculateStats();
+            config = characterConfig;
+            level = savedLevel;
+            totalExperience = savedExp;
+            RefreshRuntimeState();
         }
 
-        // 初始化稀有度加成
-        private void InitializeRarityMultipliers()
+        #region 属性获取 (带缓存优化)
+
+        /// <summary>
+        ///     获取最大HP
+        /// </summary>
+        public float GetMaxHP()
         {
-            switch (rarity)
+            if (_lastCalculatedLevel != level) RefreshCache();
+            return _cachedMaxHP;
+        }
+
+        /// <summary>
+        ///     获取攻击力
+        /// </summary>
+        public float GetAttack()
+        {
+            if (_lastCalculatedLevel != level) RefreshCache();
+            return _cachedAttack;
+        }
+
+        /// <summary>
+        ///     获取防御力
+        /// </summary>
+        public float GetDefense()
+        {
+            if (_lastCalculatedLevel != level) RefreshCache();
+            return _cachedDefense;
+        }
+
+        /// <summary>
+        ///     获取暴击率
+        /// </summary>
+        public float GetCriticalRate()
+        {
+            if (_lastCalculatedLevel != level) RefreshCache();
+            return _cachedCritRate;
+        }
+
+        /// <summary>
+        ///     获取暴击伤害倍率
+        /// </summary>
+        public float GetCriticalDamage()
+        {
+            return config.baseCriticalDamage;
+        }
+
+        /// <summary>
+        ///     获取攻击速度
+        /// </summary>
+        public float GetAttackSpeed()
+        {
+            return config.baseAttackSpeed;
+        }
+
+        #endregion
+
+        #region 经验和升级系统
+
+        /// <summary>
+        ///     获取当前等级升级所需经验
+        /// </summary>
+        public long GetExpToNextLevel()
+        {
+            return config.CalculateExpRequired(level + 1);
+        }
+
+        /// <summary>
+        ///     获取当前等级经验进度 (0-1)
+        /// </summary>
+        public float GetExpProgress()
+        {
+            var expForCurrentLevel = config.CalculateExpRequired(level);
+            var expForNextLevel = config.CalculateExpRequired(level + 1);
+            var expInThisLevel = totalExperience - expForCurrentLevel;
+            var expNeededForLevel = expForNextLevel - expForCurrentLevel;
+
+            return expNeededForLevel > 0 ? (float)expInThisLevel / expNeededForLevel : 1f;
+        }
+
+        /// <summary>
+        ///     获得经验值
+        /// </summary>
+        public bool GainExperience(long expAmount)
+        {
+            totalExperience += expAmount;
+            return CheckLevelUp();
+        }
+
+        /// <summary>
+        ///     检查并处理升级
+        /// </summary>
+        private bool CheckLevelUp()
+        {
+            var leveledUp = false;
+            var expRequired = config.CalculateExpRequired(level + 1);
+
+            while (totalExperience >= expRequired && expRequired > 0)
             {
-                case CharacterRarity.Common:
-                    rarityHPMultiplier = 1f;
-                    rarityAttackMultiplier = 1f;
-                    rarityDefenseMultiplier = 1f;
-                    break;
-                case CharacterRarity.Rare:
-                    rarityHPMultiplier = 1.2f;
-                    rarityAttackMultiplier = 1.15f;
-                    rarityDefenseMultiplier = 1.1f;
-                    break;
-                case CharacterRarity.Epic:
-                    rarityHPMultiplier = 1.5f;
-                    rarityAttackMultiplier = 1.3f;
-                    rarityDefenseMultiplier = 1.2f;
-                    break;
-                case CharacterRarity.Legendary:
-                    rarityHPMultiplier = 2f;
-                    rarityAttackMultiplier = 1.5f;
-                    rarityDefenseMultiplier = 1.4f;
-                    break;
+                level++;
+                leveledUp = true;
+                expRequired = config.CalculateExpRequired(level + 1);
             }
-        }
 
-        // 重新计算所有属性
-        public void RecalculateStats()
-        {
-            // 计算等级加成后的属性
-            float levelBonusHP = hpGrowth * (level - 1);
-            float levelBonusAttack = attackGrowth * (level - 1);
-            float levelBonusDefense = defenseGrowth * (level - 1);
-
-            // 应用稀有度加成
-            maxHP = (100f + levelBonusHP) * rarityHPMultiplier;
-            baseAttack = (20f + levelBonusAttack) * rarityAttackMultiplier;
-            baseDefense = (10f + levelBonusDefense) * rarityDefenseMultiplier;
-
-            // 确保当前HP不超过最大值
-            if (currentHP > maxHP)
+            if (leveledUp)
             {
-                currentHP = maxHP;
+                RefreshCache();
+                // 升级时恢复满血 (如果是当前使用角色)
+                if (IsCurrentCharacter()) currentHP = GetMaxHP();
             }
 
-            // 计算升级所需经验 (指数增长)
-            expToNextLevel = CalculateExpRequired(level + 1);
+            return leveledUp;
         }
 
-        // 计算指定等级所需的经验值
-        private long CalculateExpRequired(int targetLevel)
-        {
-            return (long)(100 * Mathf.Pow(targetLevel, 1.8f));
-        }
+        #endregion
 
-        // 获取实际攻击力 (包含随机波动)
+        #region 战斗系统
+
+        /// <summary>
+        ///     获取攻击伤害 (包含随机波动和暴击)
+        /// </summary>
         public float GetAttackDamage()
         {
-            float damage = baseAttack;
+            var damage = GetAttack();
 
             // 添加10%的随机波动
-            float randomFactor = Random.Range(0.9f, 1.1f);
+            var randomFactor = Random.Range(0.9f, 1.1f);
             damage *= randomFactor;
 
             // 检查暴击
-            if (Random.Range(0f, 1f) < criticalRate)
-            {
-                damage *= criticalDamage;
-            }
+            if (Random.Range(0f, 1f) < GetCriticalRate()) damage *= GetCriticalDamage();
+
+            // 检查特殊技能 (如果有的话)
+            if (config.hasSpecialAbility && Random.Range(0f, 1f) < 0.1f) // 10%触发率
+                damage *= config.specialAbilityMultiplier;
 
             return damage;
         }
 
-        // 承受伤害
+        /// <summary>
+        ///     承受伤害
+        /// </summary>
         public float TakeDamage(float incomingDamage)
         {
-            // 计算防御减伤 (防御力越高减伤越多，但不会完全免疫)
-            float damageReduction = baseDefense / (baseDefense + 100f);
-            float actualDamage = incomingDamage * (1f - damageReduction);
+            // 只有当前角色才能承受伤害
+            if (!IsCurrentCharacter()) return 0f;
+
+            // 计算防御减伤
+            var damageReduction = GetDefense() / (GetDefense() + 100f);
+            var actualDamage = incomingDamage * (1f - damageReduction);
 
             currentHP = Mathf.Max(0, currentHP - actualDamage);
             totalDamageTaken += (long)actualDamage;
@@ -143,59 +213,137 @@ namespace IdleGame.Character
             return actualDamage;
         }
 
-        // 恢复满血
+        /// <summary>
+        ///     是否死亡
+        /// </summary>
+        public bool IsDead()
+        {
+            return IsCurrentCharacter() && currentHP <= 0;
+        }
+
+        /// <summary>
+        ///     恢复满血
+        /// </summary>
         public void RestoreFullHP()
         {
-            currentHP = maxHP;
+            if (IsCurrentCharacter()) currentHP = GetMaxHP();
         }
 
-        // 获得经验值
-        public bool GainExperience(long expAmount)
+        #endregion
+
+        #region 状态管理
+
+        /// <summary>
+        ///     刷新运行时状态 (切换角色时调用)
+        /// </summary>
+        public void RefreshRuntimeState()
         {
-            experience += expAmount;
-            bool leveledUp = false;
+            RefreshCache();
+            currentHP = GetMaxHP(); // 重置为满血
 
-            // 检查是否可以升级 (可能连续升级)
-            while (experience >= expToNextLevel)
-            {
-                LevelUp();
-                leveledUp = true;
-            }
-
-            return leveledUp;
+            // 计算当前等级经验
+            var expForCurrentLevel = config.CalculateExpRequired(level);
+            currentLevelExp = totalExperience - expForCurrentLevel;
         }
 
-        // 升级
-        private void LevelUp()
+        /// <summary>
+        ///     刷新属性缓存
+        /// </summary>
+        private void RefreshCache()
         {
-            experience -= expToNextLevel;
-            level++;
-
-            // 重新计算属性
-            RecalculateStats();
-
-            // 升级后恢复满血
-            RestoreFullHP();
+            _cachedMaxHP = config.CalculateMaxHP(level);
+            _cachedAttack = config.CalculateAttack(level);
+            _cachedDefense = config.CalculateDefense(level);
+            _cachedCritRate = config.CalculateCriticalRate(level);
+            _lastCalculatedLevel = level;
         }
 
-        // 获取战斗力评分
-        public float GetPowerScore()
+        /// <summary>
+        ///     检查是否为当前使用的角色
+        /// </summary>
+        private bool IsCurrentCharacter()
         {
-            return (maxHP * 0.5f) + (baseAttack * 2f) + (baseDefense * 1f) +
-                   (criticalRate * 100f) + (level * 10f);
+            // TODO: 通过CharacterSystem检查是否为当前角色
+            return GameManager.Instance?.characterSystem.currentCharacter == this;
         }
 
-        // 获取胜率
+        #endregion
+
+        #region 统计和信息
+
+        /// <summary>
+        ///     记录战斗结果
+        /// </summary>
+        public void RecordBattleResult(bool victory, long damageDealt)
+        {
+            totalBattles++;
+            totalDamageDealt += damageDealt;
+
+            if (victory) victoriesCount++;
+        }
+
+        /// <summary>
+        ///     获取胜率
+        /// </summary>
         public float GetWinRate()
         {
             return totalBattles > 0 ? (float)victoriesCount / totalBattles : 0f;
         }
 
-        // 是否已死亡
-        public bool IsDead()
+        /// <summary>
+        ///     获取战力评分
+        /// </summary>
+        public float GetPowerScore()
         {
-            return currentHP <= 0;
+            return config.CalculatePowerScore(level);
         }
+
+        /// <summary>
+        ///     获取角色基本信息
+        /// </summary>
+        public string GetCharacterInfo()
+        {
+            return $"{config.characterName} Lv.{level} (Power: {GetPowerScore():F0})";
+        }
+
+        #endregion
+
+        #region 序列化支持
+
+        /// <summary>
+        ///     获取存档数据
+        /// </summary>
+        public CharacterSaveData GetSaveData()
+        {
+            return new CharacterSaveData
+            {
+                configID = config.characterID,
+                level = level,
+                totalExperience = totalExperience,
+                totalBattles = totalBattles,
+                victoriesCount = victoriesCount,
+                totalDamageDealt = totalDamageDealt,
+                totalDamageTaken = totalDamageTaken
+            };
+        }
+
+        #endregion
+    }
+
+
+    /// <summary>
+    ///     角色存档数据
+    /// </summary>
+    [Serializable]
+    public class CharacterSaveData
+    {
+        public string configID;
+        public int level;
+        public long totalExperience;
+        public int totalBattles;
+        public int victoriesCount;
+        public long totalDamageDealt;
+        public long totalDamageTaken;
     }
 
     public enum CharacterRarity

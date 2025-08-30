@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1a3189363c98e04fbc8b2e7e9eebd18, type: 3}
+  m_Name: TestCharacterLibrary
+  m_EditorClassIdentifier: 
+  allCharacters:
+  - {fileID: 11400000, guid: 6142ca9e2370f874a8f1ddfac188cfdd, type: 2}
+  defaultCharacter: {fileID: 11400000, guid: 6142ca9e2370f874a8f1ddfac188cfdd, type: 2}
+  gachaSettings:
+    commonWeight: 60
+    rareWeight: 25
+    epicWeight: 12
+    legendaryWeight: 3
