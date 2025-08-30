@@ -23,6 +23,9 @@ public class GameManager : MonoBehaviour
     public SpireSystem spireSystem;
     public CharacterSystem characterSystem;
 
+    [Header("Controllers")]
+    public PlayerController playerController;
+
     [Header("Game Settings")]
     [SerializeField] private float autoSaveInterval = 60f; // 自动保存间隔(秒)
     [SerializeField] private bool enableAutoSave = true;
@@ -113,6 +116,7 @@ public class GameManager : MonoBehaviour
         ServiceLocator.Register(characterSystem);
         ServiceLocator.Register(battleManager);
         ServiceLocator.Register(uiManager);
+        ServiceLocator.Register(playerController);
     }
 
     private void InitializeGameplay()
@@ -138,27 +142,6 @@ public class GameManager : MonoBehaviour
 
         isInitialized = true;
         Debug.Log("[GameManager] Game initialization completed!");
-    }
-
-    private void ValidateComponents()
-    {
-        if (logSystem == null)
-            logSystem = FindObjectOfType<IdleLogSystem>();
-
-        if (characterSystem == null)
-            characterSystem = FindObjectOfType<CharacterSystem>();
-
-        if (spireSystem == null)
-            spireSystem = FindObjectOfType<SpireSystem>();
-
-        if (ecoSystem == null)
-            ecoSystem = FindObjectOfType<EcoSystem>();
-
-        if (battleManager == null)
-            battleManager = FindObjectOfType<BattleManager>();
-
-        if (uiManager == null)
-            uiManager = FindObjectOfType<UIManager>();
     }
 
     #endregion
@@ -461,6 +444,8 @@ public class GameManager : MonoBehaviour
 
         var oldRoute = playerData.selectedRoute;
         playerData.selectedRoute = newRoute;
+
+        playerController.MoveToRoute(newRoute);
 
         logSystem?.LogMessage($"切换路线：{oldRoute} → {newRoute}");
 

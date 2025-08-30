@@ -130,7 +130,7 @@ public class UIManager : MonoBehaviour
             getCoinButton.onClick.AddListener(() =>
             {
                 GameManager.Instance?.TestAddCoins();
-                AnimateButton(buyExpButton);
+                AnimateButton(getCoinButton);
             });
         }
 
@@ -160,6 +160,7 @@ public class UIManager : MonoBehaviour
             battleRouteButton.onClick.AddListener(() =>
             {
                 GameManager.Instance?.SwitchRoute(RouteType.Battle);
+                AnimateButton(battleRouteButton);
                 AnimateRouteSwitch();
             });
         }
@@ -169,6 +170,7 @@ public class UIManager : MonoBehaviour
             economyRouteButton.onClick.AddListener(() =>
             {
                 GameManager.Instance?.SwitchRoute(RouteType.Economy);
+                AnimateButton(economyRouteButton);
                 AnimateRouteSwitch();
             });
         }
@@ -178,6 +180,7 @@ public class UIManager : MonoBehaviour
             experienceRouteButton.onClick.AddListener(() =>
             {
                 GameManager.Instance?.SwitchRoute(RouteType.Experience);
+                AnimateButton(experienceRouteButton);
                 AnimateRouteSwitch();
             });
         }
@@ -202,6 +205,8 @@ public class UIManager : MonoBehaviour
                 gameManager.characterSystem.OnCharacterLevelUp += OnCharacterLevelUp;
                 gameManager.characterSystem.OnExperienceGained += OnExperienceGained;
             }
+
+            if (gameManager.uiManager != null) gameManager.spireSystem.OnRouteChanged += UpdateRouteDisplay;
         }
     }
 
@@ -218,6 +223,8 @@ public class UIManager : MonoBehaviour
                 gameManager.characterSystem.OnCharacterLevelUp -= OnCharacterLevelUp;
                 gameManager.characterSystem.OnExperienceGained -= OnExperienceGained;
             }
+
+            if (gameManager.uiManager != null) gameManager.spireSystem.OnRouteChanged -= UpdateRouteDisplay;
         }
     }
 
@@ -409,6 +416,13 @@ public class UIManager : MonoBehaviour
             };
             routeIndicator.DOColor(routeColor, 0.3f);
         }
+    }
+
+    private void UpdateRouteDisplay(RouteType newRoute)
+    {
+        if (GameManager.Instance?.playerData.selectedRoute != newRoute) return;
+
+        UpdateRouteDisplay();
     }
 
     #endregion
