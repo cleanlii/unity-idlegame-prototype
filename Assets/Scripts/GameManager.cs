@@ -111,6 +111,8 @@ public class GameManager : MonoBehaviour
         ServiceLocator.Register(logSystem);
         ServiceLocator.Register(spireSystem);
         ServiceLocator.Register(characterSystem);
+        ServiceLocator.Register(battleManager);
+        ServiceLocator.Register(uiManager);
     }
 
     private void InitializeGameplay()
@@ -260,6 +262,8 @@ public class GameManager : MonoBehaviour
             // 这里需要从PlayerData恢复角色数据
             // characterSystem.LoadFromPlayerData(playerData);
         }
+
+        if (spireSystem != null) SwitchRoute(playerData.selectedRoute);
 
         // 同步到其他系统...
     }
@@ -461,7 +465,7 @@ public class GameManager : MonoBehaviour
         logSystem?.LogMessage($"切换路线：{oldRoute} → {newRoute}");
 
         // 通知SpireSystem
-        // spireSystem?.OnRouteChanged(newRoute);
+        spireSystem.SwitchToRoute(newRoute);
     }
 
     #endregion

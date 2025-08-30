@@ -19,6 +19,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Slider expSlider;
     [SerializeField] private TextMeshProUGUI expText; // "当前EXP/下级所需EXP" 格式
 
+    [Header("敌人信息UI")]
+    [SerializeField] private TextMeshProUGUI enemyNameText;
+    [SerializeField] private TextMeshProUGUI enemyLevelText;
+    [SerializeField] private Slider enemyHpSlider;
+    [SerializeField] private TextMeshProUGUI enemyHpText;
+    [SerializeField] private GameObject enemyInfoPanel;
+
     [Header("功能按钮")]
     [SerializeField] private Button getCoinButton;
     [SerializeField] private Button buyExpButton;
@@ -126,7 +133,7 @@ public class UIManager : MonoBehaviour
                 AnimateButton(buyExpButton);
             });
         }
-        
+
         // 购买经验按钮
         if (buyExpButton != null)
         {
