@@ -92,6 +92,8 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        Screen.SetResolution(900, 1947, false);
+
         // 确保所有组件初始化完成后再加载数据
         StartCoroutine(DelayedInitialization());
     }
