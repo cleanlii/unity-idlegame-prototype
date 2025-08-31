@@ -188,6 +188,7 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
   <img src="Screenshots/s2.png" alt="ScreenShot2" height="300"/>
   <img src="Screenshots/s3.png" alt="ScreenShot3" height="300"/>
 </p>
+
 - **CharacterDataEditor**: A useful tool for quick build and test (gacha, upgrading, etc.)
 
 ### **Future Plan**
