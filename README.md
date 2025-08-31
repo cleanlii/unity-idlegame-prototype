@@ -3,21 +3,30 @@
 [![English](https://img.shields.io/badge/lang-English-blue.svg)](https://github.com/cleanlii/unity-idlegame-prototype/blob/master/README.md)
 [![SC](https://img.shields.io/badge/lang-中文-red.svg)](https://github.com/cleanlii/unity-idlegame-prototype/blob/master/README.zh-sc.md)
 
-A Unity-based idle RPG where players automatically climb towers through different routes, manage characters, and progress through automated systems.
+A Unity-based idle RPG prototype where players automatically grow through different routes, manage characters, and progress through a loop idle systems.
 
-## 🎮 Core Concept
+## Core Concept
 
-This is an **idle tower climbing game** where players choose from three different routes and progress automatically both online and offline:
+### Easy Idle
+The game runs automatically, allowing players to enjoy steady progress without the stress of complex controls or high-intensity challenges.
+
+### Spire-like Mechanics
+
+Inspired by Slay the Spire and Darkest Dungeon, this demo features a branching path system where players freely choose from three different routes and progress automatically:
 
 - **Battle Route**: Engage in automated 1v1 combat to gain experience and coins
 - **Economy Route**: Passively generate coins over time
 - **Experience Route**: Passively generate experience points over time
 
-Players can switch routes freely when online, and the game calculates appropriate offline rewards based on the selected route when returning to the game.
+### Asynchronous Gameplay
+
+- **Offline Rewards**: Continue to accumulate experience and coins even while offline
+- **(TODO) Quick Sessions**: Make use of short play sessions to complete time-limited events and earn bonus rewards
+- **(TODO) Async. Multiplayer**: Rankings, asynchronous friend battles, and more.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 Assets/Scripts/
@@ -52,171 +61,84 @@ Assets/Scripts/
 
 ---
 
-## 🎯 Core Systems Overview
+## Core Systems Overview
 
-### **Battle Manager** - Automated Combat System
+### **Battle Manager**
 The `BattleManager` handles all combat logic with automated damage calculation and turn-based mechanics:
 
-**Key Features:**
 - **Automated Combat**: Characters and enemies attack at intervals based on attack speed
 - **Damage Calculation**: Includes random variance, critical hits, and special abilities
 - **Battle Refresh System**: When players die, automatically revive and restart battles
 - **Combat Statistics**: Tracks damage dealt/taken, battle count, win streaks
+- **Random Enemy**: Enemies are generated from highly customizable, template-based datasets.
+- **Endless Dungeon**: Each enemy can be defined with unique stats, abilities, and even behaviors, ensuring endless replayability and theoretically infinite battles.
 
-**Combat Flow:**
-1. Player attacks enemy → Calculate damage with crits/special abilities
-2. Enemy attacks player → Apply damage reduction based on defense
-3. Battle continues until one side dies
-4. Victory: Grant EXP and coins, restore HP, generate new enemy
-5. Defeat: Revive player after delay, reset enemy HP, restart battle
-
-### **Idle Rewards System** - Offline Progression
-The game calculates offline rewards based on elapsed time and selected route:
-
-**Offline Calculation Logic:**
-- **Route-Based Rewards**: Different routes provide different offline benefits
-- **Time Validation**: Anti-cheat measures prevent time manipulation
-- **Efficiency Scaling**: Long offline periods have diminishing returns
-- **Level Scaling**: Higher level characters generate better offline rewards
+### **Idle Rewards System**
+The ``GameManager`` and ``SpireSystem`` calculates both online rewards and offline rewards based on elapsed time and selected route:
 
 **Reward Types:**
-- **Battle Route**: Experience (primary) + moderate coins + simulated battles
-- **Economy Route**: High coin generation + no experience
-- **Experience Route**: High experience generation + no coins
+- **Battle Route**: XP + coins + ~~(TODO) special reward like equipment or buff~~
+- **Economy Route**: High coin generation + no XP
+- **Experience Route**: High XP generation + no coins
 
-### **Gacha Mechanic** - Character Collection
-Characters are defined through ScriptableObjects with weighted rarity system:
+**Offline Reward Logic:**
+- **Route-Based Rewards**: Different routes provide different offline benefits
+- **Time Validation**: Anti-cheat measures prevent time manipulation (local only for now)
+- **Efficiency Cap**: Offline rewards scale down over time and stop at a maximum limit.
+- **Customizable**: The formulas are fully independent, allowing flexible design and balance strategies.
+
+### **Character & Gacha Mechanic**
+Players can obtain and train multiple characters through a gacha system, freely switching between them to optimize different strategies or collecting their favorite character.
 
 **Character System:**
 - **CharacterConfig**: Template defining base stats and growth curves
-- **CharacterDatabase**: Collection manager with gacha probability weights
+- **CharacterDB**: Collection manager with gacha probability weights
 - **CharacterData**: Runtime instances with levels, experience, and battle stats
-- **Rarity System**: Common (60%), Rare (25%), Epic (12%), Legendary (3%)
+- **Rarity Flag**: Common (60% for gacha), Rare (25%), Epic (12%), Legendary (3%)
 
-**Gacha Features:**
+**Gacha System:**
 - Weighted random selection based on rarity
-- Character progression independent of gacha
-- ScriptableObject-based configuration for easy balancing
+- Character progression independent of gacha acquisition
+- Item-based configuration for easy balancing
 
-### **Upgrade System** - Progression Mechanics
+### **Upgrade System**
 Multiple progression paths using a unified currency system:
 
 **Progression Types:**
-1. **Battle Experience**: Gained from combat victories
-2. **Purchased Experience**: Buy EXP directly with coins
+1. **Battle XP**: Gained from battle victories
+2. **Purchased Experience**: Buy XP directly with coins
 3. **Character Switching**: Manage multiple characters with independent progression
-4. **Stat Scaling**: HP, Attack, Defense, Critical Rate grow with levels
 
 **Formula Examples:**
 - **HP Growth**: `baseHP + (level-1) × hpGrowthPerLevel × rarityMultiplier`
-- **EXP Requirements**: `baseExp × level^growthFactor`
+- **XP Requirements**: `baseExp × level^growthFactor`
 - **Damage Calculation**: `(baseAttack + levelBonus) × randomFactor × critMultiplier`
 
-### **Currency System** - Unified Economy
+### **Currency System**
 Single currency (coins) used for all transactions:
 
-**Coin Sources:**
+**Currency Sources:**
 - Battle victories
-- Economy route passive generation
+- Economy route
 - Offline rewards
 
-**Coin Spending:**
-- Purchase experience points
-- Gacha character pulls
-- (Future: Equipment, upgrades, etc.)
+**Currency Spending:**
+- Purchase XP
+- Gacha
+- ~~(TODO: Equipment, upgrades, etc.)~~
 
 ### **Logging System** - Action Tracking
 Comprehensive logging system for all player actions and game events:
 
 **Log Categories:**
-- **Battle**: Damage dealt/taken, battle results, enemy encounters
-- **Character**: Level ups, character switches, stat changes
-- **Economy**: Coin gains/losses, purchases, rewards
-- **System**: Route switches, offline rewards, save/load events
-- **Experience**: EXP gains, level progression, skill unlocks
+- **Battle**: Damage dealt/taken, battle results, enemy encounters/spawns
+- **Character**: Level ups, character gacha/~~switches~~, stat changes
+- **Reward**: Coin gains/losses, XP purchases, offline rewards
+- **System**: Route switches, save/load events
 
 ---
 
-## 🔧 Technical Architecture
-
-### **Design Patterns Used**
-- **Service Locator**: Centralized system dependency management
-- **Observer Pattern**: Event-driven communication between systems
-- **ScriptableObject Architecture**: Data-driven design for easy content creation
-- **Command Pattern**: UI actions trigger specific game commands
-
-### **Data Flow Architecture**
-```
-GameManager (Coordinator)
-    ├── PlayerData (Persistent State)
-    ├── CharacterSystem (Character Management)
-    ├── SpireSystem (Route Logic)
-    ├── BattleManager (Combat Simulation)
-    ├── SaveSystem (Data Persistence)
-    └── IdleLogSystem (Action Logging)
-```
-
-### **Key Technical Features**
-
-**1. Encrypted Save System**
-- Uses AES encryption for save file security
-- Automatic backup creation before overwriting saves
-- Data validation and corruption recovery
-
-**2. Event-Driven Architecture**
-```csharp
-public Action<CharacterData> OnCharacterSwitched;
-public Action<CharacterData, int> OnCharacterLevelUp;
-public Action<long, long> OnCurrencyChanged;
-```
-
-**3. Service Locator Pattern**
-```csharp
-ServiceLocator.Register<CharacterSystem>(characterSystem);
-var battleManager = ServiceLocator.Get<BattleManager>();
-```
-
-**4. Type-Safe Event System**
-```csharp
-EventManager.Subscribe<BattleEndEvent>(OnBattleEnd);
-EventManager.Publish(new BattleEndEvent { victory = true });
-```
-
----
-
-## 🚀 Getting Started
-
-### **Setup Requirements**
-- Unity 2022.3 LTS or later
-- Newtonsoft.Json package (for enhanced serialization)
-- DOTween (for UI animations)
-- TextMeshPro (for UI text rendering)
-
-### **Quick Start Guide**
-
-1. **Configure Character Database**
-   - Create character configs in `Assets/Data/Characters/`
-   - Set up CharacterDatabase with default character
-   - Configure gacha weights for different rarities
-
-2. **Set Up Route Configs**
-   - Configure BattleRouteConfig with combat rewards
-   - Set EconomyRouteConfig coin generation rates
-   - Define ExperienceRouteConfig EXP generation rates
-
-3. **Initialize Game Manager**
-   - Drag all system components to GameManager
-   - Set auto-save interval and offline reward settings
-   - Configure anti-cheat parameters
-
-4. **Test Core Features**
-   - Use Context Menu options for testing individual systems
-   - Check Unity Console for detailed logging output
-   - Monitor IdleLogSystem for real-time action feedback
-
----
-
-## 🎮 Core Gameplay Loop
+## Gameplay Loop
 
 ### **Active Gameplay (Online)**
 ```
@@ -242,83 +164,32 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
 
 ---
 
-## 🔍 Key Features in Detail
+## Dev Notes
 
-### **Route System**
-- **Dynamic Switching**: Change routes anytime with immediate effect
-- **Route-Specific Logic**: Each route runs different reward algorithms
-- **Progress Persistence**: Route timers and states saved between sessions
+### **External Plugins**
+- **DOTween**: Basic UI and gameplay animations
+- **TextMeshPro**: Flexible UI text rendering
+- **ScriptableObject**: Data-driven configuration and easy in-editor adjustments
 
-### **Character Progression**
-- **Multi-Character Support**: Collect and switch between different characters
-- **Independent Progression**: Each character levels separately
-- **Stat Scaling**: Growth curves defined in ScriptableObjects
-- **Battle Statistics**: Track performance metrics per character
+### **Utilities**
+- **JsonUtils**: Serialized and encrypted JSON file handling for safe saving/loading
+- **ServiceLocator**: Centralized service (Manager/Controller/System) registration, retrieval, and lifecycle management
+- **IdleGameConst**: Unified access point for constant parameters and global settings
+- **LubanConfig**: External spreadsheet-to-data pipeline for scalable content editing
 
-### **Anti-Cheat Measures**
-- **Time Validation**: Detect system clock manipulation
-- **Data Integrity**: Validate save files for corruption or tampering
-- **Reasonable Limits**: Cap maximum offline rewards to prevent exploitation
+### **Testing Editor Tools**
+TBD
 
-### **Developer-Friendly Features**
-- **Context Menu Testing**: Right-click methods for quick testing
-- **Comprehensive Logging**: Detailed debug output for all systems
-- **Modular Design**: Systems can be tested independently
-- **ScriptableObject Workflow**: Easy content creation without code changes
+### **Future Plan**
+#### Structure
+- **Spreadsheet-driven Data**: Designers can manage and balance content and supports backend service as well.
+- **Resource Management**: Hotfix support for scalable live ops and efficient patching
+- **Analytics Integration**: Backend data analytics tools for statistics tracking
 
----
+#### Gameplay
+- **Character Switch**: Allow players to choose the character whichever they like
+- **Equipment System**: Gear progression for role-playing
+- **Inventory System**: Unified system to handle live status preview (more detials), buffs, gears, and character roster
+- **More Spire Features**: Map preview, boss milestones and more trackable progression
+- ......
 
-## 🛠️ Development Notes
-
-### **Code Style Guidelines**
-- **English Comments**: All public APIs documented in English
-- **Chinese Debug Output**: Console messages in Chinese for localization
-- **Consistent Naming**: Clear, descriptive method and variable names
-- **Error Handling**: Comprehensive try-catch blocks with meaningful error messages
-
-### **Performance Considerations**
-- **Cached Calculations**: Character stats cached until level changes
-- **Coroutine Management**: Proper cleanup to prevent memory leaks
-- **UI Update Optimization**: Throttled updates (every 0.5 seconds)
-- **Memory Management**: Object pooling for frequent instantiations
-
-### **Testing Framework**
-Each major system includes Context Menu testing methods:
-- `[ContextMenu("Test Battle Victory")]`
-- `[ContextMenu("Test Character Switch")]`
-- `[ContextMenu("Test Offline Rewards")]`
-
-### **Future Expansion Points**
-- **Equipment System**: Extend character progression
-- **Skill Trees**: Add character specialization
-- **Guild Features**: Social elements and cooperative gameplay
-- **Event System**: Time-limited challenges and rewards
-
----
-
-## 📊 System Dependencies
-
-```mermaid
-graph TD
-    A[GameManager] --> B[CharacterSystem]
-    A --> C[SpireSystem]
-    A --> D[BattleManager]
-    A --> E[SaveSystem]
-    A --> F[IdleLogSystem]
-    
-    B --> G[CharacterDatabase]
-    B --> H[CharacterConfig]
-    
-    C --> I[RouteConfig]
-    C --> D
-    
-    D --> J[EnemyConfig]
-    D --> B
-    
-    E --> K[JsonUtils]
-    E --> L[PlayerData]
-    
-    F --> M[UIManager]
-```
-
-This architecture ensures clean separation of concerns while maintaining efficient communication between systems through the Service Locator pattern and event-driven design.
