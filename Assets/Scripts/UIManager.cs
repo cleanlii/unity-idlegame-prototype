@@ -786,19 +786,15 @@ public class UIManager : MonoBehaviour
     {
         ResetEnemyUICache();
         UpdateEnemyInfo();
-        ShowMessage($"遭遇敌人：{enemy.enemyName}！", 1.5f);
     }
 
     private void OnBattleStarted(EnemyData enemy)
     {
         UpdateEnemyInfo();
-        ShowMessage($"开始战斗：{enemy.enemyName}！", 1.5f);
     }
 
     private void OnPlayerDied()
     {
-        ShowMessage("角色阵亡！准备复活...");
-
         // VFX
         if (characterNameText != null)
         {
@@ -816,8 +812,6 @@ public class UIManager : MonoBehaviour
 
     private void OnPlayerRevived()
     {
-        ShowMessage("角色复活！", 1.5f);
-
         // Revive VFX
         if (characterNameText != null)
         {
@@ -837,8 +831,6 @@ public class UIManager : MonoBehaviour
 
     private void OnBattleRestarted()
     {
-        ShowMessage("战斗重新开始！", 1.5f);
-
         // 强制刷新所有UI
         UpdateAllUI();
     }
@@ -847,7 +839,6 @@ public class UIManager : MonoBehaviour
     {
         var resultText = victory ? "胜利" : "失败";
         var message = $"战斗{resultText}！用时{duration:F1}秒";
-        ShowMessage(message);
 
         // if (victory) PlayVictoryEffect();
     }
@@ -887,15 +878,6 @@ public class UIManager : MonoBehaviour
     public void RefreshUI()
     {
         UpdateAllUI();
-    }
-
-    /// <summary>
-    ///     Message
-    /// </summary>
-    public void ShowMessage(string message, float duration = 2f)
-    {
-        // TODO: 实现消息提示UI
-        Debug.Log($"[UI Message] {message}");
     }
 
     #endregion

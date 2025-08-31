@@ -551,7 +551,7 @@ namespace IdleGame.Gameplay.Battle
         private void LogMessage(string message)
         {
             _logSystem?.LogMessage(message);
-            Debug.Log($"[BattleManager] {message}");
+            // Debug.Log($"[BattleManager] {message}");
         }
 
         #endregion

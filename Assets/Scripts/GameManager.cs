@@ -124,10 +124,14 @@ public class GameManager : MonoBehaviour
         ServiceLocator.Register(playerController);
     }
 
-    private void InitializeGameplay()
+    private void InitializeSystems()
     {
         characterSystem.Initialize();
         spireSystem.Initialize();
+
+        // TODO: Optimize general initialization flow
+        // logSystem.Initilize();
+        // uiManager.Initilize();
     }
 
     private IEnumerator DelayedInitialization()
@@ -139,7 +143,7 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForEndOfFrame();
 
-        InitializeGameplay();
+        InitializeSystems();
 
         // 启动自动保存
         StartAutoSave();
@@ -180,9 +184,9 @@ public class GameManager : MonoBehaviour
         var success = SaveSystem.SavePlayerData(playerData);
 
         if (success)
-            logSystem?.LogMessage("游戏数据已保存" + playerData.currentCharacterID);
+            LogMessage("游戏数据已保存" + playerData.currentCharacterID);
         else
-            logSystem?.LogMessage("保存失败，请检查存储空间");
+            LogMessage("保存失败，请检查存储空间");
     }
 
     /// <summary>
@@ -203,7 +207,7 @@ public class GameManager : MonoBehaviour
             HandleOfflineProgress();
 
             OnPlayerDataLoaded?.Invoke(playerData);
-            logSystem?.LogMessage($"欢迎回来，{playerData.playerName}！");
+            LogMessage($"Welcome back, {playerData.playerName}！");
         }
         else
             Debug.LogError("[GameManager] Failed to load player data!");
@@ -220,7 +224,7 @@ public class GameManager : MonoBehaviour
             // 重新创建新的PlayerData
             playerData = new PlayerData();
             SyncDataToSystems();
-            logSystem?.LogMessage("存档已删除，开始新游戏");
+            LogMessage("存档已删除，开始新游戏");
         }
     }
 
@@ -248,13 +252,13 @@ public class GameManager : MonoBehaviour
         // 清空现有数据
         playerData.ownedCharacters.Clear();
 
-        // 同步拥有的角色数据
+        // TODO: Better sync methods
         var ownedCharacters = characterSystem.GetOwnedCharacters();
         foreach (var character in ownedCharacters)
         {
             if (character.IsNull) continue;
 
-            // 将CharacterData转换为CharacterSaveData
+            // CharacterData -> CharacterSaveData
             var saveData = new CharacterSaveData
             {
                 configID = character.config.characterID,
@@ -282,6 +286,8 @@ public class GameManager : MonoBehaviour
     private void SyncDataToSystems()
     {
         if (playerData == null) return;
+
+        // TODO: Better sync methods
 
         // 同步到角色系统
         if (characterSystem != null) LoadCharacterDataFromPlayerData();
@@ -373,7 +379,7 @@ public class GameManager : MonoBehaviour
         playerData.AddCoins(amount);
 
         OnCurrencyChanged?.Invoke(oldAmount, playerData.coins);
-        logSystem?.LogMessage($"获得金币：+{amount} (总计：{playerData.coins})");
+        LogMessage($"获得金币：+{amount} (总计：{playerData.coins})");
     }
 
     /// <summary>
@@ -387,11 +393,11 @@ public class GameManager : MonoBehaviour
         {
             OnCurrencyChanged?.Invoke(playerData.coins + amount, playerData.coins);
             var reasonText = string.IsNullOrEmpty(reason) ? "" : $"({reason})";
-            logSystem?.LogMessage($"消费金币：-{amount} {reasonText} (剩余：{playerData.coins})");
+            LogMessage($"消费金币：-{amount} {reasonText} (剩余：{playerData.coins})");
             return true;
         }
 
-        logSystem?.LogMessage($"金币不足！需要：{amount}，当前：{playerData.coins}");
+        LogMessage($"金币不足！需要：{amount}，当前：{playerData.coins}");
         return false;
     }
 
@@ -425,7 +431,7 @@ public class GameManager : MonoBehaviour
         if (SpendCoins(totalCost, "购买经验"))
         {
             characterSystem?.GainExperience(expAmount);
-            logSystem?.LogMessage($"购买经验：{expAmount}点 (花费{totalCost}金币)");
+            LogMessage($"购买经验：{expAmount}点 (花费{totalCost}金币)");
         }
     }
 
@@ -440,9 +446,9 @@ public class GameManager : MonoBehaviour
             // var newCharacter = gachaSystem.DrawCharacter();
             // characterSystem.AddCharacter(newCharacter);
 
-            logSystem?.LogMessage($"进行抽卡 (花费{gachaCost}金币)");
+            LogMessage($"进行抽卡 (花费{gachaCost}金币)");
             // 暂时的测试代码
-            logSystem?.LogMessage("抽到角色：测试角色 (稀有度：普通)");
+            LogMessage("抽到角色：测试角色 (稀有度：普通)");
         }
     }
 
@@ -458,7 +464,7 @@ public class GameManager : MonoBehaviour
 
         playerController.MoveToRoute(newRoute);
 
-        logSystem?.LogMessage($"切换路线：{oldRoute} → {newRoute}");
+        LogMessage($"切换路线：{oldRoute} → {newRoute}");
 
         // 通知SpireSystem
         spireSystem.SwitchToRoute(newRoute);
@@ -648,13 +654,13 @@ public class GameManager : MonoBehaviour
         var rewardSummary = string.Join(", ", rewardMessages);
         var bonusText = rewards.hasBonus ? $" (倍率: {rewards.bonusMultiplier:F1}x)" : "";
 
-        logSystem?.LogMessage("=== 离线奖励 ===");
-        logSystem?.LogMessage($"离线时长: {rewards.offlineHours:F1} 小时");
-        logSystem?.LogMessage($"路线: {GetRouteDisplayName(rewards.route)}");
-        logSystem?.LogMessage($"奖励: {rewardSummary}{bonusText}");
-        logSystem?.LogMessage($"说明: {rewards.description}");
+        LogMessage("=== 离线奖励 ===");
+        LogMessage($"离线时长: {rewards.offlineHours:F1} 小时");
+        LogMessage($"路线: {GetRouteDisplayName(rewards.route)}");
+        LogMessage($"奖励: {rewardSummary}{bonusText}");
+        LogMessage($"说明: {rewards.description}");
 
-        if (rewards.simulatedBattles > 0) logSystem?.LogMessage($"模拟战斗: {rewards.simulatedBattles} 场");
+        if (rewards.simulatedBattles > 0) LogMessage($"模拟战斗: {rewards.simulatedBattles} 场");
     }
 
     #endregion
@@ -675,7 +681,7 @@ public class GameManager : MonoBehaviour
     private void OnSaveError(string error)
     {
         Debug.LogError($"[GameManager] Save error: {error}");
-        logSystem?.LogMessage($"保存出错：{error}");
+        LogMessage($"保存出错：{error}");
     }
 
     #endregion
@@ -770,13 +776,9 @@ public class GameManager : MonoBehaviour
         };
     }
 
-    /// <summary>
-    ///     记录日志消息
-    /// </summary>
     private void LogMessage(string message)
     {
         logSystem?.LogMessage(message);
-        Debug.Log($"[GameManager] {message}");
     }
 
     #endregion

@@ -360,9 +360,13 @@ namespace IdleGame.Gameplay
 
         #endregion
 
+        #region Utility Methods
+
         private void LogMessage(string message)
         {
             logSystem?.LogMessage(message);
         }
+
+        #endregion
     }
 }

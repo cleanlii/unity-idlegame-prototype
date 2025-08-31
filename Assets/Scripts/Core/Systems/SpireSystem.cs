@@ -416,12 +416,12 @@ namespace IdleGame.Gameplay
             SwitchToRoute(RouteType.Experience);
         }
 
-        #endregion
-
         private void LogMessage(string message)
         {
             _logSystem?.LogMessage(message);
-            Debug.Log($"[SpireSystem] {message}");
+            // Debug.Log($"[SpireSystem] {message}");
         }
+
+        #endregion
     }
 }
