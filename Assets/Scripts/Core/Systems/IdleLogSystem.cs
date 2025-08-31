@@ -11,28 +11,28 @@ namespace IdleGame.Analytics
     public class IdleLogSystem : MonoBehaviour
     {
         [Header("UI Elements")]
-        [SerializeField] private GameObject logPanel; // 日志面板
-        [SerializeField] private Transform logContentParent; // 日志内容父物体
-        [SerializeField] private GameObject logEntryPrefab; // 日志条目预制体
-        [SerializeField] private ScrollRect scrollRect; // 滚动区域
-        [SerializeField] private Button toggleButton; // 显示/隐藏按钮
-        [SerializeField] private Button clearButton; // 清空日志按钮
-        [SerializeField] private TextMeshProUGUI logCountText; // 日志数量显示
+        [SerializeField] private GameObject logPanel; // Log panel
+        [SerializeField] private Transform logContentParent; // Log content parent object
+        [SerializeField] private GameObject logEntryPrefab; // Log entry prefab
+        [SerializeField] private ScrollRect scrollRect; // Scroll area
+        [SerializeField] private Button toggleButton; // Show/hide button
+        [SerializeField] private Button clearButton; // Clear logs button
+        [SerializeField] private TextMeshProUGUI logCountText; // Log count display
 
         [Header("Log Entry Settings")]
-        [SerializeField] private int maxLogEntries = 50; // 最大日志条目数
-        [SerializeField] private bool showTimestamps = true; // 显示时间戳
-        [SerializeField] private bool autoScrollToBottom = true; // 自动滚动到底部
-        [SerializeField] private float logFadeInDuration = 0.3f; // 日志淡入时间
-        [SerializeField] private float logLifetime = 30f; // 日志显示时长（秒）
+        [SerializeField] private int maxLogEntries = 50; // Maximum log entries
+        [SerializeField] private bool showTimestamps = true; // Show timestamps
+        [SerializeField] private bool autoScrollToBottom = true; // Auto scroll to bottom
+        [SerializeField] private float logFadeInDuration = 0.3f; // Log fade in duration
+        [SerializeField] private float logLifetime = 30f; // Log display lifetime (seconds)
 
         [Header("Highlight Settings")]
-        [SerializeField] private Color battleColor = Color.red; // 战斗相关
-        [SerializeField] private Color expColor = Color.blue; // 经验相关
-        [SerializeField] private Color coinColor = Color.yellow; // 金币相关
-        [SerializeField] private Color systemColor = Color.green; // 系统消息
-        [SerializeField] private Color warningColor = Color.yellow; // 警告消息
-        [SerializeField] private Color characterColor = Color.cyan; // 角色相关
+        [SerializeField] private Color battleColor = Color.red; // Battle related
+        [SerializeField] private Color expColor = Color.blue; // Experience related
+        [SerializeField] private Color coinColor = Color.yellow; // Coin related
+        [SerializeField] private Color systemColor = Color.green; // System messages
+        [SerializeField] private Color warningColor = Color.yellow; // Warning messages
+        [SerializeField] private Color characterColor = Color.cyan; // Character related
 
         [Header("Animation Settings")]
         [SerializeField] private bool enableEntryAnimations = true;
@@ -54,21 +54,21 @@ namespace IdleGame.Analytics
         private void Start()
         {
             SetupUI();
-            LogMessage("游戏日志系统已启动", LogType.System);
+            LogMessage("Game Log System Started", LogType.System);
         }
 
         #region Initialization
 
         private void InitializeLogSystem()
         {
-            // 确保UI组件存在
+            // Ensure UI components exist
             if (logPanel == null)
             {
-                Debug.LogWarning("[IdleLogSystem] 日志面板未设置，创建默认面板");
+                Debug.LogWarning("[IdleLogSystem] Log panel not set, creating default panel");
                 CreateDefaultLogPanel();
             }
 
-            // 初始化按钮事件
+            // Initialize button events
             if (toggleButton != null)
                 toggleButton.onClick.AddListener(ToggleLogPanel);
 
@@ -78,19 +78,19 @@ namespace IdleGame.Analytics
 
         private void SetupUI()
         {
-            // 更新日志计数显示
+            // Update log count display
             UpdateLogCountDisplay();
 
-            // 设置初始面板状态
+            // Set initial panel state
             if (logPanel != null)
                 logPanel.SetActive(_isPanelVisible);
         }
 
         private void CreateDefaultLogPanel()
         {
-            // 这里可以添加代码来创建默认的日志UI
-            // 实际项目中建议在Scene中预设好UI组件
-            Debug.LogWarning("[IdleLogSystem] 请在Scene中设置日志UI组件");
+            // Code can be added here to create default log UI
+            // It's recommended to preset UI components in the Scene
+            Debug.LogWarning("[IdleLogSystem] Please set up log UI components in Scene");
         }
 
         #endregion
@@ -98,7 +98,7 @@ namespace IdleGame.Analytics
         #region Core Methods
 
         /// <summary>
-        ///     记录通用日志消息
+        ///     Log general messages
         /// </summary>
         public void LogMessage(string message, LogType logType = LogType.General)
         {
@@ -114,7 +114,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     记录战斗伤害日志
+        ///     Log battle damage
         /// </summary>
         public void LogDamage(float damage, bool isPlayerDamage, string playerName = "", string enemyName = "")
         {
@@ -123,12 +123,12 @@ namespace IdleGame.Analytics
 
             if (isPlayerDamage)
             {
-                message = $"【{playerName}】对【{enemyName}】造成了 {damage:F0} 点伤害";
+                message = $"[{playerName}] dealt {damage:F0} damage to [{enemyName}]";
                 logType = LogType.Battle;
             }
             else
             {
-                message = $"【{enemyName}】对【{playerName}】造成了 {damage:F0} 点伤害";
+                message = $"[{enemyName}] dealt {damage:F0} damage to [{playerName}]";
                 logType = LogType.Battle;
             }
 
@@ -136,97 +136,186 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     记录战斗结果日志
+        ///     Log battle results
         /// </summary>
         public void LogBattleResult(bool victory, string playerName, string enemyName, float duration, int expReward = 0, int coinReward = 0)
         {
-            var resultText = victory ? "击败" : "被击败";
-            var message = $"【{playerName}】{resultText}了【{enemyName}】！战斗用时 {duration:F1} 秒";
+            var resultText = victory ? "defeated" : "was defeated by";
+            var message = $"[{playerName}] {resultText} [{enemyName}]! Battle duration: {duration:F1}s";
 
             LogMessage(message, LogType.Battle);
 
             if (victory && (expReward > 0 || coinReward > 0))
             {
                 if (expReward > 0)
-                    LogMessage($"获得经验值：+{expReward}", LogType.Experience);
+                    LogMessage($"Gained experience: +{expReward}", LogType.Experience);
                 if (coinReward > 0)
-                    LogMessage($"获得金币：+{coinReward}", LogType.Coin);
+                    LogMessage($"Gained coins: +{coinReward}", LogType.Coin);
             }
         }
 
         /// <summary>
-        ///     记录经验获得日志
+        ///     Log experience gain
         /// </summary>
-        public void LogExpGain(long expAmount, string source = "", string characterName = "")
+        public void LogExpGain(long expAmount, string source = "", string characterName = IdleGameConst.LOG_PLAYER_NAME)
         {
-            var sourceText = string.IsNullOrEmpty(source) ? "" : $"（{source}）";
-            var message = $"【{characterName}】获得了 {expAmount} 点经验值{sourceText}";
+            var sourceText = string.IsNullOrEmpty(source) ? "" : $" ({source})";
+            var message = $"[{characterName}] gained {expAmount} experience{sourceText}";
             LogMessage(message, LogType.Experience);
         }
 
         /// <summary>
-        ///     记录角色升级日志
+        ///     Log character level up
         /// </summary>
         public void LogLevelUp(string characterName, int oldLevel, int newLevel)
         {
-            var message = $"🎉【{characterName}】升级了！Lv.{oldLevel} → Lv.{newLevel}";
+            var message = $"[{characterName}] leveled up! Lv.{oldLevel} → Lv.{newLevel}";
             LogMessage(message, LogType.Character);
         }
 
         /// <summary>
-        ///     记录金币变化日志
+        ///     Log coin changes
         /// </summary>
         public void LogCoinChange(long amount, string reason = "", bool isGain = true)
         {
-            var action = isGain ? "获得" : "消费";
-            var reasonText = string.IsNullOrEmpty(reason) ? "" : $"（{reason}）";
-            var message = $"{action}金币：{(isGain ? "+" : "-")}{Math.Abs(amount)}{reasonText}";
+            var action = isGain ? "Gained" : "Spent";
+            var reasonText = string.IsNullOrEmpty(reason) ? "" : $" ({reason})";
+            var message = $"{action} coins: {(isGain ? "+" : "-")}{Math.Abs(amount)}{reasonText}";
             LogMessage(message, LogType.Coin);
         }
 
         /// <summary>
-        ///     记录角色切换日志
+        ///     Log character switching
         /// </summary>
         public void LogCharacterSwitch(string oldCharacter, string newCharacter)
         {
-            var message = $"切换角色：【{oldCharacter}】→【{newCharacter}】";
+            var message = $"Character switched: [{oldCharacter}] → [{newCharacter}]";
             LogMessage(message, LogType.Character);
         }
 
         /// <summary>
-        ///     记录抽卡结果日志
+        ///     Log gacha results
         /// </summary>
         public void LogGachaResult(string characterName, string rarity, int cost)
         {
-            var message = $"🎲 抽卡成功！获得【{characterName}】（{rarity}）花费 {cost} 金币";
+            var message = $"Gacha success! Obtained [{characterName}] ({rarity}) - Cost: {cost} coins";
             LogMessage(message, LogType.Character);
         }
 
         /// <summary>
-        ///     记录路线切换日志
+        ///     Log route switching
         /// </summary>
         public void LogRouteSwitch(string oldRoute, string newRoute)
         {
-            var message = $"切换路线：{oldRoute} → {newRoute}";
+            var message = $"Route switched: {oldRoute} → {newRoute}";
             LogMessage(message, LogType.System);
         }
 
         /// <summary>
-        ///     记录离线奖励日志
+        ///     Log offline rewards
         /// </summary>
         public void LogOfflineReward(string rewardType, int amount, float offlineHours)
         {
-            var message = $"⏰ 离线 {offlineHours:F1} 小时，{rewardType}奖励：+{amount}";
+            var message = $"Offline for {offlineHours:F1} hours, {rewardType} reward: +{amount}";
             LogMessage(message, LogType.System);
         }
 
         /// <summary>
-        ///     记录商店购买日志
+        ///     Log shop purchases
         /// </summary>
         public void LogPurchase(string itemName, int cost, int amount)
         {
-            var message = $"🛒 购买【{itemName}】×{amount}，花费 {cost} 金币";
+            var message = $"Purchased [{itemName}] x{amount}, cost: {cost} coins";
             LogMessage(message, LogType.Coin);
+        }
+
+        /// <summary>
+        ///     Log character death
+        /// </summary>
+        public void LogCharacterDeath(string characterName)
+        {
+            var message = $"[{characterName}] has been defeated!";
+            LogMessage(message, LogType.Battle);
+        }
+
+        /// <summary>
+        ///     Log character revival
+        /// </summary>
+        public void LogCharacterRevive(string characterName)
+        {
+            var message = $"✨ [{characterName}] has been revived!";
+            LogMessage(message, LogType.System);
+        }
+
+        /// <summary>
+        ///     Log battle restart
+        /// </summary>
+        public void LogBattleRestart()
+        {
+            var message = "⚔Battle restarted - Both fighters at full health!";
+            LogMessage(message, LogType.Battle);
+        }
+
+        /// <summary>
+        ///     Log enemy spawn
+        /// </summary>
+        public void LogEnemySpawn(string enemyName, int enemyLevel)
+        {
+            var message = $"New enemy appeared: [{enemyName}] Lv.{enemyLevel}";
+            LogMessage(message, LogType.Battle);
+        }
+
+        /// <summary>
+        ///     Log save/load operations
+        /// </summary>
+        public void LogSaveOperation(bool isLoad, bool success, string details = "")
+        {
+            var operation = isLoad ? "Load" : "Save";
+            var result = success ? "successful" : "failed";
+            var message = $"{operation} {result}";
+
+            if (!string.IsNullOrEmpty(details))
+                message += $" - {details}";
+
+            LogMessage(message, LogType.System);
+        }
+
+        /// <summary>
+        ///     Log critical hits
+        /// </summary>
+        public void LogCriticalHit(string attackerName, float damage)
+        {
+            var message = $"CRITICAL HIT! [{attackerName}] dealt {damage:F0} critical damage!";
+            LogMessage(message, LogType.Battle);
+        }
+
+        /// <summary>
+        ///     Log special abilities
+        /// </summary>
+        public void LogSpecialAbility(string characterName, string abilityName, float damage = 0)
+        {
+            var message = damage > 0
+                ? $"[{characterName}] used [{abilityName}] for {damage:F0} damage!"
+                : $"[{characterName}] activated [{abilityName}]!";
+            LogMessage(message, LogType.Battle);
+        }
+
+        /// <summary>
+        ///     Log system warnings
+        /// </summary>
+        public void LogWarning(string warningMessage)
+        {
+            var message = $"Warning: {warningMessage}";
+            LogMessage(message, LogType.Warning);
+        }
+
+        /// <summary>
+        ///     Log system errors
+        /// </summary>
+        public void LogError(string errorMessage)
+        {
+            var message = $"Error: {errorMessage}";
+            LogMessage(message, LogType.Warning);
         }
 
         #endregion
@@ -234,45 +323,45 @@ namespace IdleGame.Analytics
         #region UI Display
 
         /// <summary>
-        ///     添加日志条目到UI
+        ///     Add log entry to UI
         /// </summary>
         private void AddLogEntry(LogEntry entry)
         {
-            // 添加到数据队列
+            // Add to data queue
             _logEntries.Enqueue(entry);
 
-            // 移除超出限制的旧日志
+            // Remove old logs exceeding limit
             while (_logEntries.Count > maxLogEntries)
             {
                 var oldEntry = _logEntries.Dequeue();
                 RemoveOldestLogUI();
             }
 
-            // 创建UI元素
+            // Create UI element
             CreateLogUI(entry);
 
-            // 触发事件
+            // Trigger event
             OnNewLogEntry?.Invoke(entry);
 
-            // 输出到Unity控制台（调试用）
+            // Output to Unity console (for debugging)
             Debug.Log($"[Game Log] {entry.GetFormattedMessage()}");
 
-            // 更新UI显示
+            // Update UI display
             UpdateLogCountDisplay();
         }
 
         /// <summary>
-        ///     创建日志UI元素
+        ///     Create log UI element
         /// </summary>
         private void CreateLogUI(LogEntry entry)
         {
             if (logContentParent == null || logEntryPrefab == null) return;
 
-            // 实例化日志条目
+            // Instantiate log entry
             var logObject = Instantiate(logEntryPrefab, logContentParent);
             _logUIElements.Add(logObject);
 
-            // 设置日志内容
+            // Set log content
             var textComponent = logObject.GetComponentInChildren<TextMeshProUGUI>();
             if (textComponent != null)
             {
@@ -280,21 +369,22 @@ namespace IdleGame.Analytics
                 textComponent.color = entry.displayColor;
             }
 
-            // 设置背景颜色（可选）
+            // Set background color (optional)
             var backgroundImage = logObject.GetComponent<Image>();
-            if (backgroundImage != null) backgroundImage.color = new Color(entry.displayColor.r, entry.displayColor.g, entry.displayColor.b, 0.1f);
+            if (backgroundImage != null)
+                backgroundImage.color = new Color(entry.displayColor.r, entry.displayColor.g, entry.displayColor.b, 0.1f);
 
-            // 自动滚动到底部
+            // Auto scroll to bottom
             if (autoScrollToBottom && scrollRect != null)
                 StartCoroutine(ScrollToBottomCoroutine());
 
-            // 设置生命周期
+            // Set lifetime
             if (logLifetime > 0)
                 StartCoroutine(LogLifetimeCoroutine(logObject));
         }
 
         /// <summary>
-        ///     移除最旧的日志UI
+        ///     Remove oldest log UI
         /// </summary>
         private void RemoveOldestLogUI()
         {
@@ -305,7 +395,7 @@ namespace IdleGame.Analytics
 
                 if (oldestLog != null)
                 {
-                    // 播放退出动画
+                    // Play exit animation
                     if (enableEntryAnimations)
                         oldestLog.transform.DOScale(0f, 0.2f).OnComplete(() => Destroy(oldestLog));
                     else
@@ -315,17 +405,17 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     滚动到底部协程
+        ///     Scroll to bottom coroutine
         /// </summary>
         private IEnumerator ScrollToBottomCoroutine()
         {
-            yield return new WaitForEndOfFrame(); // 等待布局更新
+            yield return new WaitForEndOfFrame(); // Wait for layout update
             if (scrollRect != null)
                 scrollRect.verticalNormalizedPosition = 0f;
         }
 
         /// <summary>
-        ///     日志条目生命周期协程
+        ///     Log entry lifetime coroutine
         /// </summary>
         private IEnumerator LogLifetimeCoroutine(GameObject logObject)
         {
@@ -335,7 +425,7 @@ namespace IdleGame.Analytics
             {
                 _logUIElements.Remove(logObject);
 
-                // 播放淡出动画
+                // Play fade out animation
                 var canvasGroup = logObject.GetComponent<CanvasGroup>();
                 if (canvasGroup != null)
                     canvasGroup.DOFade(0f, 0.5f).OnComplete(() => Destroy(logObject));
@@ -349,7 +439,7 @@ namespace IdleGame.Analytics
         #region UI Control
 
         /// <summary>
-        ///     切换日志面板显示/隐藏
+        ///     Toggle log panel show/hide
         /// </summary>
         public void ToggleLogPanel()
         {
@@ -365,7 +455,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     显示日志面板
+        ///     Show log panel
         /// </summary>
         public void ShowLogPanel()
         {
@@ -378,7 +468,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     隐藏日志面板
+        ///     Hide log panel
         /// </summary>
         public void HideLogPanel()
         {
@@ -391,14 +481,14 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     清空所有日志
+        ///     Clear all logs
         /// </summary>
         public void ClearLogs()
         {
-            // 清空数据
+            // Clear data
             _logEntries.Clear();
 
-            // 清空UI元素
+            // Clear UI elements
             foreach (var logUI in _logUIElements)
             {
                 if (logUI != null)
@@ -407,22 +497,22 @@ namespace IdleGame.Analytics
 
             _logUIElements.Clear();
 
-            // 更新显示
+            // Update display
             UpdateLogCountDisplay();
 
-            // 触发事件
+            // Trigger event
             OnLogCleared?.Invoke();
 
-            LogMessage("日志已清空", LogType.System);
+            LogMessage("Logs cleared", LogType.System);
         }
 
         /// <summary>
-        ///     更新日志数量显示
+        ///     Update log count display
         /// </summary>
         private void UpdateLogCountDisplay()
         {
             if (logCountText != null)
-                logCountText.text = $"日志 ({_logEntries.Count}/{maxLogEntries})";
+                logCountText.text = $"Logs ({_logEntries.Count}/{maxLogEntries})";
         }
 
         #endregion
@@ -430,7 +520,7 @@ namespace IdleGame.Analytics
         #region Utility Methods
 
         /// <summary>
-        ///     根据日志类型获取颜色
+        ///     Get color based on log type
         /// </summary>
         private Color GetLogTypeColor(LogType logType)
         {
@@ -447,7 +537,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     获取最近的日志条目
+        ///     Get recent log entries
         /// </summary>
         public LogEntry[] GetRecentLogs(int count = 20)
         {
@@ -462,7 +552,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     根据类型筛选日志
+        ///     Filter logs by type
         /// </summary>
         public List<LogEntry> GetLogsByType(LogType logType)
         {
@@ -477,7 +567,7 @@ namespace IdleGame.Analytics
         }
 
         /// <summary>
-        ///     获取日志统计信息
+        ///     Get log statistics
         /// </summary>
         public string GetLogStatistics()
         {
@@ -486,44 +576,57 @@ namespace IdleGame.Analytics
             var coinLogs = GetLogsByType(LogType.Coin).Count;
             var systemLogs = GetLogsByType(LogType.System).Count;
 
-            return $"日志统计：战斗({battleLogs}) 经验({expLogs}) 金币({coinLogs}) 系统({systemLogs})";
+            return $"Log Stats: Battle({battleLogs}) Experience({expLogs}) Coins({coinLogs}) System({systemLogs})";
         }
 
         #endregion
 
         #region Debug Methods
 
-        [ContextMenu("测试战斗日志")]
+        [ContextMenu("Test Battle Logs")]
         public void TestBattleLog()
         {
-            LogDamage(156f, true, "勇者", "哥布林");
-            LogDamage(23f, false, "勇者", "哥布林");
-            LogBattleResult(true, "勇者", "哥布林", 15.3f, 50, 30);
+            LogDamage(156f, true, "Hero", "Goblin");
+            LogDamage(23f, false, "Hero", "Goblin");
+            LogBattleResult(true, "Hero", "Goblin", 15.3f, 50, 30);
+            LogCriticalHit("Hero", 234f);
+            LogSpecialAbility("Hero", "Power Strike", 180f);
         }
 
-        [ContextMenu("测试经验日志")]
+        [ContextMenu("Test Experience Logs")]
         public void TestExpLog()
         {
-            LogExpGain(100, "战斗胜利", "勇者");
-            LogLevelUp("勇者", 5, 6);
+            LogExpGain(100, "Battle Victory", "Hero");
+            LogLevelUp("Hero", 5, 6);
         }
 
-        [ContextMenu("测试金币日志")]
+        [ContextMenu("Test Coin Logs")]
         public void TestCoinLog()
         {
-            LogCoinChange(500, "战斗奖励");
-            LogCoinChange(200, "购买经验", false);
+            LogCoinChange(500, "Battle Reward");
+            LogCoinChange(200, "Experience Purchase", false);
+            LogPurchase("Health Potion", 50, 3);
         }
 
-        [ContextMenu("测试系统日志")]
+        [ContextMenu("Test System Logs")]
         public void TestSystemLog()
         {
-            LogCharacterSwitch("勇者", "法师");
-            LogGachaResult("剑士", "稀有", 100);
-            LogRouteSwitch("战斗线", "金币线");
+            LogCharacterSwitch("Hero", "Mage");
+            LogGachaResult("Swordsman", "Rare", 100);
+            LogRouteSwitch("Battle Route", "Coin Route");
+            LogSaveOperation(false, true, "Auto-save completed");
         }
 
-        [ContextMenu("测试大量日志")]
+        [ContextMenu("Test Warning Logs")]
+        public void TestWarningLog()
+        {
+            LogWarning("Low health detected");
+            LogError("Failed to load character data");
+            LogCharacterDeath("Hero");
+            LogCharacterRevive("Hero");
+        }
+
+        [ContextMenu("Test Massive Logs")]
         public void TestMassiveLogs()
         {
             StartCoroutine(MassiveLogTestCoroutine());
@@ -533,7 +636,7 @@ namespace IdleGame.Analytics
         {
             for (var i = 0; i < 20; i++)
             {
-                LogMessage($"测试日志条目 #{i + 1}", (LogType)(i % 6));
+                LogMessage($"Test log entry #{i + 1}", (LogType)(i % 6));
                 yield return new WaitForSeconds(0.1f);
             }
         }
@@ -564,13 +667,13 @@ namespace IdleGame.Analytics
 
     public enum LogType
     {
-        General, // 一般信息
-        Battle, // 战斗相关
-        Experience, // 经验相关
-        Coin, // 金币相关
-        Character, // 角色相关
-        System, // 系统消息
-        Warning // 警告消息
+        General, // General information
+        Battle, // Battle related
+        Experience, // Experience related
+        Coin, // Coin related
+        Character, // Character related
+        System, // System messages
+        Warning // Warning messages
     }
 
     #endregion

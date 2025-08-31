@@ -67,7 +67,7 @@ namespace IdleGame.Gameplay
             // 生成第一个敌人
             SpawnNextEnemy();
 
-            LogMessage("[SpireSystem] 塔层系统初始化完成");
+            // LogMessage("[SpireSystem] 塔层系统初始化完成");
         }
 
         public void StartSpire()
@@ -104,7 +104,7 @@ namespace IdleGame.Gameplay
             if (oldRoute == RouteType.Battle)
             {
                 _battleManager.RefreshBattle();
-                LogMessage("战斗被中断，敌人重新生成");
+                // LogMessage("战斗被中断，敌人重新生成");
             }
 
             // 启动新路线
@@ -113,7 +113,7 @@ namespace IdleGame.Gameplay
             // 触发事件
             OnRouteChanged?.Invoke(newRoute);
 
-            LogMessage($"路线切换：{GetRouteDisplayName(oldRoute)} → {GetRouteDisplayName(newRoute)}");
+            _logSystem.LogRouteSwitch(GetRouteDisplayName(oldRoute), GetRouteDisplayName(newRoute));
         }
 
         private void StopCurrentRoute()
@@ -156,14 +156,14 @@ namespace IdleGame.Gameplay
         /// </summary>
         private IEnumerator BattleRouteCoroutine()
         {
-            LogMessage($"进入{battleRouteConfig.routeName}，准备战斗");
+            // LogMessage($"进入{battleRouteConfig.routeName}，准备战斗");
 
             while (currentRoute == RouteType.Battle)
             {
                 // 检查是否有可用角色
                 if (_characterSystem.currentCharacter.IsNull)
                 {
-                    LogMessage("无可用角色，等待角色设置...");
+                    // LogMessage("无可用角色，等待角色设置...");
                     yield return new WaitForSeconds(1f);
                     continue;
                 }
@@ -206,7 +206,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         private IEnumerator EconomyRouteCoroutine()
         {
-            LogMessage($"进入{economyRouteConfig.routeName}，开始获得金币");
+            // LogMessage($"进入{economyRouteConfig.routeName}，开始获得金币");
 
             while (currentRoute == RouteType.Economy)
             {
@@ -217,8 +217,6 @@ namespace IdleGame.Gameplay
                     // 获得金币
                     var coinGain = economyRouteConfig.coinReward;
                     _gameManager.AddCoins(coinGain);
-
-                    LogMessage($"金币线收益：+{coinGain} 金币");
 
                     // 重置计时器
                     routeTimer = 0f;
@@ -233,7 +231,7 @@ namespace IdleGame.Gameplay
         /// </summary>
         private IEnumerator ExperienceRouteCoroutine()
         {
-            LogMessage($"进入{experienceRouteConfig.routeName}，开始获得经验");
+            // LogMessage($"进入{experienceRouteConfig.routeName}，开始获得经验");
 
             while (currentRoute == RouteType.Experience)
             {
@@ -244,8 +242,6 @@ namespace IdleGame.Gameplay
                     // 获得经验
                     var expGain = experienceRouteConfig.expReward;
                     _characterSystem.GainExperience(expGain);
-
-                    LogMessage($"经验线收益：+{expGain} 经验");
 
                     // 重置计时器
                     routeTimer = 0f;
@@ -280,7 +276,7 @@ namespace IdleGame.Gameplay
             // 触发敌人生成事件
             OnEnemySpawned?.Invoke(currentEnemy);
 
-            LogMessage($"生成敌人：{currentEnemy.enemyName} (Lv.{currentEnemy.recommendedLevel}, HP:{currentEnemy.maxHP:F0})");
+            _logSystem.LogEnemySpawn(currentEnemy.enemyName, currentEnemy.recommendedLevel);
         }
 
         /// <summary>
@@ -341,10 +337,10 @@ namespace IdleGame.Gameplay
         {
             return route switch
             {
-                RouteType.Battle => "战斗线",
-                RouteType.Economy => "金币线",
-                RouteType.Experience => "经验线",
-                _ => "未知路线"
+                RouteType.Battle => "Battle Route",
+                RouteType.Economy => "Eco Route",
+                RouteType.Experience => "Exp Route",
+                _ => "Unknown Route"
             };
         }
 
@@ -388,7 +384,7 @@ namespace IdleGame.Gameplay
             {
                 yield return new WaitForSeconds(debugUpdateInterval);
 
-                if (showDebugInfo) Debug.Log($"[SpireSystem Debug] {GetRouteProgressInfo()} | {GetBattleStatusInfo()}");
+                // if (showDebugInfo) Debug.Log($"[SpireSystem Debug] {GetRouteProgressInfo()} | {GetBattleStatusInfo()}");
             }
         }
 

@@ -12,13 +12,13 @@ namespace IdleGame.Editor
     [CustomEditor(typeof(CharacterConfig))]
     public class CharacterConfigEditor : UnityEditor.Editor
     {
-        private CharacterConfig config;
-        private bool showPreviewStats = true;
-        private int previewLevel = 1;
+        private CharacterConfig _config;
+        private bool _showPreviewStats = true;
+        private int _previewLevel = 1;
 
         private void OnEnable()
         {
-            config = (CharacterConfig)target;
+            _config = (CharacterConfig)target;
         }
 
         public override void OnInspectorGUI()
@@ -31,8 +31,8 @@ namespace IdleGame.Editor
             EditorGUILayout.Space(10);
 
             // Preview section
-            showPreviewStats = EditorGUILayout.Foldout(showPreviewStats, "Preview Stats", true);
-            if (showPreviewStats) DrawPreviewSection();
+            _showPreviewStats = EditorGUILayout.Foldout(_showPreviewStats, "Preview Stats", true);
+            if (_showPreviewStats) DrawPreviewSection();
 
             // Tool buttons
             EditorGUILayout.Space(5);
@@ -49,21 +49,21 @@ namespace IdleGame.Editor
             EditorGUILayout.BeginVertical("Box");
 
             // Level selector
-            previewLevel = EditorGUILayout.IntSlider("Preview Level", previewLevel, 1, 50);
+            _previewLevel = EditorGUILayout.IntSlider("Preview Level", _previewLevel, 1, 50);
 
             EditorGUILayout.Space(5);
 
             // Attributes display
-            if (config != null)
+            if (_config != null)
             {
                 EditorGUILayout.LabelField("Level Stats", EditorStyles.boldLabel);
 
-                var maxHP = config.CalculateMaxHP(previewLevel);
-                var attack = config.CalculateAttack(previewLevel);
-                var defense = config.CalculateDefense(previewLevel);
-                var critRate = config.CalculateCriticalRate(previewLevel);
-                var powerScore = config.CalculatePowerScore(previewLevel);
-                var expRequired = config.CalculateExpRequired(previewLevel);
+                var maxHP = _config.CalculateMaxHP(_previewLevel);
+                var attack = _config.CalculateAttack(_previewLevel);
+                var defense = _config.CalculateDefense(_previewLevel);
+                var critRate = _config.CalculateCriticalRate(_previewLevel);
+                var powerScore = _config.CalculatePowerScore(_previewLevel);
+                var expRequired = _config.CalculateExpRequired(_previewLevel);
 
                 EditorGUILayout.LabelField($"Max HP: {maxHP:F0}");
                 EditorGUILayout.LabelField($"Attack: {attack:F0}");
@@ -95,9 +95,9 @@ namespace IdleGame.Editor
         /// </summary>
         private void CreateTestCharacterData()
         {
-            if (config != null)
+            if (_config != null)
             {
-                var testData = config.CreateCharacterData();
+                var testData = _config.CreateCharacterData();
                 Debug.Log($"Created test character: {testData.GetCharacterInfo()}\n" +
                           $"Base Stats - HP:{testData.GetMaxHP():F0} ATK:{testData.GetAttack():F0} DEF:{testData.GetDefense():F0}");
             }
@@ -110,26 +110,26 @@ namespace IdleGame.Editor
         {
             var issues = new List<string>();
 
-            if (config == null) return;
+            if (_config == null) return;
 
             // Validate basic info
-            if (string.IsNullOrEmpty(config.characterID))
+            if (string.IsNullOrEmpty(_config.characterID))
                 issues.Add("Character ID is empty");
 
-            if (string.IsNullOrEmpty(config.characterName))
+            if (string.IsNullOrEmpty(_config.characterName))
                 issues.Add("Character name is empty");
 
             // Validate values
-            if (config.baseMaxHP <= 0)
+            if (_config.baseMaxHP <= 0)
                 issues.Add("Base HP must be greater than 0");
 
-            if (config.baseAttack <= 0)
+            if (_config.baseAttack <= 0)
                 issues.Add("Base Attack must be greater than 0");
 
-            if (config.baseExpRequired <= 0)
+            if (_config.baseExpRequired <= 0)
                 issues.Add("Base EXP Required must be greater than 0");
 
-            if (config.expGrowthFactor <= 1.0f)
+            if (_config.expGrowthFactor <= 1.0f)
                 issues.Add("EXP Growth Factor should be greater than 1.0");
 
             // Output result

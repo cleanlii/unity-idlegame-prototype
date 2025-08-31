@@ -70,7 +70,7 @@ namespace IdleGame.Gameplay.Battle
                 _characterSystem.OnCharacterSwitched += OnCharacterSwitched;
             }
 
-            LogMessage("[BattleManager] 战斗管理器初始化完成");
+            // LogMessage("[BattleManager] 战斗管理器初始化完成");
         }
 
         #endregion
@@ -84,20 +84,20 @@ namespace IdleGame.Gameplay.Battle
         {
             if (isBattleActive || enemy == null)
             {
-                LogMessage("无法开始战斗：已在战斗中或敌人为空");
+                // LogMessage("无法开始战斗：已在战斗中或敌人为空");
                 return;
             }
 
             // 检查角色状态
             if (_characterSystem.currentCharacter.IsNull)
             {
-                LogMessage("无法开始战斗：没有可用角色");
+                // LogMessage("无法开始战斗：没有可用角色");
                 return;
             }
 
             if (_characterSystem.currentCharacter.IsDead())
             {
-                LogMessage("角色已阵亡，正在复活...");
+                // LogMessage("角色已阵亡，正在复活...");
                 RevivePlayer();
                 return;
             }
@@ -112,8 +112,6 @@ namespace IdleGame.Gameplay.Battle
 
             // 触发战斗开始事件
             OnBattleStarted?.Invoke(currentEnemy);
-
-            LogMessage($"开始战斗！对手：{currentEnemy.enemyName} (Lv.{currentEnemy.recommendedLevel})");
         }
 
         /// <summary>
@@ -131,7 +129,7 @@ namespace IdleGame.Gameplay.Battle
                 _battleCoroutine = null;
             }
 
-            LogMessage("战斗被中断");
+            // LogMessage("战斗被中断");
         }
 
         /// <summary>
@@ -143,7 +141,7 @@ namespace IdleGame.Gameplay.Battle
 
             StopBattle();
             currentEnemy = null;
-            LogMessage("战斗被强制结束");
+            // LogMessage("战斗被强制结束");
         }
 
         #endregion
@@ -161,7 +159,7 @@ namespace IdleGame.Gameplay.Battle
             // 战斗开始延迟
             yield return new WaitForSeconds(battleStartDelay);
 
-            LogMessage($"战斗正式开始！{character.config.characterName} VS {currentEnemy.enemyName}");
+            LogMessage($"Battle Start! {character.config.characterName} VS {currentEnemy.enemyName}");
 
             while (isBattleActive && currentEnemy != null &&
                    !currentEnemy.IsDead() && !character.IsDead())
@@ -209,8 +207,7 @@ namespace IdleGame.Gameplay.Battle
             OnDamageDealt?.Invoke(actualDamage, true);
             onEnemyHpChanged?.Invoke(currentEnemy);
 
-            LogMessage($"{character.config.characterName} 造成伤害: {actualDamage:F1}");
-            _logSystem?.LogDamage(actualDamage, true);
+            _logSystem.LogDamage(actualDamage, true, character.config.characterName, currentEnemy.enemyName);
 
             // 等待玩家攻击间隔
             var attackInterval = baseAttackInterval / character.GetAttackSpeed();
@@ -228,8 +225,7 @@ namespace IdleGame.Gameplay.Battle
             // 触发伤害事件
             OnDamageDealt?.Invoke(damageToPlayer, false);
 
-            LogMessage($"{currentEnemy.enemyName} 造成伤害: {damageToPlayer:F1}");
-            _logSystem?.LogDamage(damageToPlayer, false);
+            _logSystem.LogDamage(damageToPlayer, false, character.config.characterName, currentEnemy.enemyName);
 
             // 等待敌人攻击间隔
             var attackInterval = baseAttackInterval / currentEnemy.attackSpeed;
@@ -264,9 +260,7 @@ namespace IdleGame.Gameplay.Battle
             // 角色恢复满血
             _characterSystem.RestoreHP();
 
-            LogMessage($"战斗胜利！用时 {battleDuration:F1}秒");
-            LogMessage($"获得奖励 - 经验: {expReward}, 金币: {coinReward}");
-            LogMessage($"连胜: {consecutiveWins}次");
+            _logSystem.LogBattleResult(true, IdleGameConst.LOG_PLAYER_NAME, currentEnemy.enemyName, battleDuration, expReward, coinReward);
 
             // 触发战斗结束事件
             OnBattleEnded?.Invoke(true, currentEnemy, battleDuration);
@@ -290,7 +284,7 @@ namespace IdleGame.Gameplay.Battle
             // 记录角色战斗统计（无奖励）
             _characterSystem.RecordBattleResult(false, 0);
 
-            LogMessage($"战斗失败！用时 {battleDuration:F1}秒");
+            _logSystem.LogBattleResult(false, IdleGameConst.LOG_PLAYER_NAME, currentEnemy.enemyName, battleDuration);
 
             // 触发战斗结束事件
             OnBattleEnded?.Invoke(false, currentEnemy, battleDuration);
@@ -315,7 +309,7 @@ namespace IdleGame.Gameplay.Battle
         /// </summary>
         private IEnumerator BattleRefreshCoroutine()
         {
-            LogMessage("开始战斗刷新流程...");
+            _logSystem.LogBattleRestart();
 
             // 1. 复活玩家
             yield return new WaitForSeconds(reviveDelay);
@@ -326,7 +320,7 @@ namespace IdleGame.Gameplay.Battle
             {
                 currentEnemy.ResetHP();
                 onEnemyHpChanged?.Invoke(currentEnemy);
-                LogMessage($"{currentEnemy.enemyName} 血量已重置");
+                // LogMessage($"{currentEnemy.enemyName} 血量已重置");
             }
 
             // 3. 等待一段时间后重新开始战斗
@@ -335,7 +329,7 @@ namespace IdleGame.Gameplay.Battle
             // 4. 重新开始战斗
             if (CanStartBattle())
             {
-                LogMessage("战斗重新开始！");
+                // LogMessage("战斗重新开始！");
                 OnBattleRestarted?.Invoke();
 
                 // 重新启动战斗
@@ -351,7 +345,7 @@ namespace IdleGame.Gameplay.Battle
         {
             if (!isBattleActive) return;
 
-            LogMessage("手动刷新战斗");
+            // LogMessage("手动刷新战斗");
 
             // 停止当前战斗
             StopBattle();
@@ -373,7 +367,7 @@ namespace IdleGame.Gameplay.Battle
             {
                 _characterSystem.RestoreHP();
                 OnPlayerRevived?.Invoke();
-                LogMessage($"{_characterSystem.currentCharacter.config.characterName} 已复活！血量已恢复");
+                _logSystem.LogCharacterRevive(_characterSystem.currentCharacter.config.characterName);
             }
         }
 
@@ -383,22 +377,22 @@ namespace IdleGame.Gameplay.Battle
         private void OnCharacterDied(CharacterData character)
         {
             OnPlayerDied?.Invoke();
-            LogMessage($"{character.config.characterName} 阵亡！");
+            _logSystem.LogCharacterDeath(character.config.characterName);
 
             // 不立即停止战斗，让OnBattleDefeat处理刷新逻辑
         }
 
         /// <summary>
-        ///     角色切换事件处理 - 修改为保持战斗状态
+        ///     角色切换事件处理
         /// </summary>
         private void OnCharacterSwitched(CharacterData newCharacter)
         {
-            LogMessage($"角色切换至: {newCharacter.config.characterName}");
+            // LogMessage($"角色切换至: {newCharacter.config.characterName}");
 
             // 角色切换时，如果在战斗中，刷新战斗而不是停止
             if (isBattleActive)
             {
-                LogMessage("角色切换，刷新当前战斗");
+                // LogMessage("角色切换，刷新当前战斗");
                 StartCoroutine(BattleRefreshCoroutine());
             }
         }
@@ -424,8 +418,6 @@ namespace IdleGame.Gameplay.Battle
         public void RefreshBattle()
         {
             if (currentEnemy == null) return;
-
-            LogMessage("外部请求刷新战斗");
 
             // 停止当前战斗
             if (isBattleActive) StopBattle();
@@ -454,52 +446,9 @@ namespace IdleGame.Gameplay.Battle
             // 重新开始战斗
             if (currentEnemy != null && CanStartBattle())
             {
-                LogMessage("快速重启战斗！");
                 OnBattleRestarted?.Invoke();
                 StartBattle(currentEnemy);
             }
-        }
-
-        /// <summary>
-        ///     设置自动复活开关
-        /// </summary>
-        public void SetAutoRevive(bool enabled)
-        {
-            autoReviveEnabled = enabled;
-            LogMessage($"自动复活: {(enabled ? "开启" : "关闭")}");
-        }
-
-        /// <summary>
-        ///     获取战斗刷新设置信息
-        /// </summary>
-        public string GetBattleRefreshInfo()
-        {
-            return $"自动复活: {(autoReviveEnabled ? "开启" : "关闭")} | " +
-                   $"复活延迟: {reviveDelay}s | " +
-                   $"重启延迟: {battleRestartDelay}s";
-        }
-
-        /// <summary>
-        ///     获取当前战斗状态信息
-        /// </summary>
-        public string GetBattleStatusInfo()
-        {
-            if (!isBattleActive)
-                return currentEnemy != null ? $"待战: {currentEnemy.enemyName}" : "无敌人";
-
-            if (currentEnemy == null)
-                return "战斗中 (无敌人数据)";
-
-            var enemyHpPercent = currentEnemy.currentHP / currentEnemy.maxHP * 100f;
-            return $"战斗中: {currentEnemy.enemyName} HP: {enemyHpPercent:F1}% | 用时: {battleTimer:F1}s";
-        }
-
-        /// <summary>
-        ///     获取战斗统计信息
-        /// </summary>
-        public string GetBattleStatsInfo()
-        {
-            return $"连胜: {consecutiveWins} | 本次战斗: {totalBattlesThisSession} | 总用时: {totalBattleTime:F1}s";
         }
 
         /// <summary>
@@ -517,12 +466,12 @@ namespace IdleGame.Gameplay.Battle
         {
             if (isBattleActive)
             {
-                LogMessage("战斗进行中，无法更换敌人");
+                // LogMessage("战斗进行中，无法更换敌人");
                 return;
             }
 
             currentEnemy = enemy;
-            LogMessage($"设置新敌人: {enemy?.enemyName ?? "None"}");
+            // LogMessage($"设置新敌人: {enemy?.enemyName ?? "None"}");
         }
 
         /// <summary>

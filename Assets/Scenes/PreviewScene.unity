@@ -649,7 +649,6 @@ MonoBehaviour:
     specialAbilityChance: 0.2
     enemyColor: {r: 1, g: 0, b: 0, a: 1}
     sizeScale: 1
-  isBattleActive: 0
   routeTimer: 0
   showDebugInfo: 1
   debugUpdateInterval: 1
@@ -5342,7 +5341,6 @@ MonoBehaviour:
     totalGachaCostPaid: 0
     offlineDuration: 0
     totalOfflineRewards: 0
-    unlockedAchievements: []
     musicVolume: 1
     sfxVolume: 1
     enableNotifications: 1
@@ -5812,7 +5810,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Get Gold
+  m_text: Get Coin
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

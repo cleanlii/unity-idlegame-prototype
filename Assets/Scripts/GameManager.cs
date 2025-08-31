@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using IdleGame;
 using IdleGame.Analytics;
 using IdleGame.Character;
 using IdleGame.Core;
@@ -184,9 +185,9 @@ public class GameManager : MonoBehaviour
         var success = SaveSystem.SavePlayerData(playerData);
 
         if (success)
-            LogMessage("游戏数据已保存" + playerData.currentCharacterID);
+            LogMessage("Game data saved: " + playerData.currentCharacterID);
         else
-            LogMessage("保存失败，请检查存储空间");
+            LogMessage("Save failed, please check storage space");
     }
 
     /// <summary>
@@ -207,7 +208,7 @@ public class GameManager : MonoBehaviour
             HandleOfflineProgress();
 
             OnPlayerDataLoaded?.Invoke(playerData);
-            LogMessage($"Welcome back, {playerData.playerName}！");
+            LogMessage($"Welcome back, {playerData.playerName}!");
         }
         else
             Debug.LogError("[GameManager] Failed to load player data!");
@@ -224,7 +225,7 @@ public class GameManager : MonoBehaviour
             // 重新创建新的PlayerData
             playerData = new PlayerData();
             SyncDataToSystems();
-            LogMessage("存档已删除，开始新游戏");
+            LogMessage("Save data deleted, starting a new game");
         }
     }
 
@@ -277,7 +278,7 @@ public class GameManager : MonoBehaviour
         // 同步当前角色ID
         if (!characterSystem.currentCharacter.IsNull) playerData.currentCharacterID = characterSystem.currentCharacter.config.characterID;
 
-        LogMessage($"已同步{ownedCharacters.Count}个角色数据到存档");
+        LogMessage($"Synchronized {ownedCharacters.Count} character data entries to save");
     }
 
     /// <summary>
@@ -315,7 +316,7 @@ public class GameManager : MonoBehaviour
             var config = characterSystem.characterDb.GetCharacterConfig(characterSave.configID);
             if (config == null)
             {
-                LogMessage($"警告：未找到角色配置 {characterSave.configID}");
+                Debug.LogWarning($"Character config not found: {characterSave.configID}");
                 continue;
             }
 
@@ -338,14 +339,14 @@ public class GameManager : MonoBehaviour
             var success = characterSystem.SwitchCharacter(playerData.currentCharacterID);
             if (!success)
             {
-                LogMessage($"无法切换到角色 {playerData.currentCharacterID}，使用默认角色");
+                Debug.LogWarning($"Failed to switch to character {playerData.currentCharacterID}, using default character instead");
                 SetDefaultCurrentCharacter();
             }
         }
         else
             SetDefaultCurrentCharacter();
 
-        LogMessage($"已从存档加载{playerData.ownedCharacters.Count}个角色");
+        LogMessage($"Loaded {playerData.ownedCharacters.Count} characters from save data");
     }
 
     private void SetDefaultCurrentCharacter()
@@ -379,7 +380,7 @@ public class GameManager : MonoBehaviour
         playerData.AddCoins(amount);
 
         OnCurrencyChanged?.Invoke(oldAmount, playerData.coins);
-        LogMessage($"获得金币：+{amount} (总计：{playerData.coins})");
+        LogMessage($"{IdleGameConst.LOG_PLAYER_NAME} +{amount} Coins (Total: {playerData.coins})");
     }
 
     /// <summary>
@@ -393,11 +394,11 @@ public class GameManager : MonoBehaviour
         {
             OnCurrencyChanged?.Invoke(playerData.coins + amount, playerData.coins);
             var reasonText = string.IsNullOrEmpty(reason) ? "" : $"({reason})";
-            LogMessage($"消费金币：-{amount} {reasonText} (剩余：{playerData.coins})");
+            LogMessage($"{IdleGameConst.LOG_PLAYER_NAME} spent coins: -{amount} {reasonText} (Remaining: {playerData.coins})");
             return true;
         }
 
-        LogMessage($"金币不足！需要：{amount}，当前：{playerData.coins}");
+        LogMessage($"{IdleGameConst.LOG_PLAYER_NAME} don't have enough coins! Required: {amount}, Current: {playerData.coins}");
         return false;
     }
 
@@ -428,10 +429,10 @@ public class GameManager : MonoBehaviour
     {
         var totalCost = expAmount * expCost;
 
-        if (SpendCoins(totalCost, "购买经验"))
+        if (SpendCoins(totalCost, "Buy EXP"))
         {
             characterSystem?.GainExperience(expAmount);
-            LogMessage($"购买经验：{expAmount}点 (花费{totalCost}金币)");
+            LogMessage($"{IdleGameConst.LOG_PLAYER_NAME} purchased {expAmount} EXP (Cost: {totalCost} coins)");
         }
     }
 
@@ -440,15 +441,25 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void PerformGacha()
     {
-        if (SpendCoins(gachaCost, "抽卡"))
+        if (SpendCoins(gachaCost, "Gacha"))
         {
-            // 这里需要调用GachaSystem
-            // var newCharacter = gachaSystem.DrawCharacter();
-            // characterSystem.AddCharacter(newCharacter);
-
-            LogMessage($"进行抽卡 (花费{gachaCost}金币)");
-            // 暂时的测试代码
-            LogMessage("抽到角色：测试角色 (稀有度：普通)");
+            // 实际的抽卡逻辑
+            if (characterSystem?.characterDb != null)
+            {
+                var newCharacter = characterSystem.characterDb.GetRandomCharacter();
+                if (newCharacter != null)
+                {
+                    characterSystem.AddCharacterByConfig(newCharacter);
+                    logSystem?.LogGachaResult(newCharacter.characterName,
+                        newCharacter.rarity.ToString(),
+                        gachaCost);
+                }
+            }
+            else
+            {
+                // 测试代码
+                logSystem?.LogGachaResult("Test Character", "Common", gachaCost);
+            }
         }
     }
 
@@ -464,7 +475,7 @@ public class GameManager : MonoBehaviour
 
         playerController.MoveToRoute(newRoute);
 
-        LogMessage($"切换路线：{oldRoute} → {newRoute}");
+        Debug.Log($"{IdleGameConst.LOG_PLAYER_NAME} switched Route：{oldRoute} → {newRoute}");
 
         // 通知SpireSystem
         spireSystem.SwitchToRoute(newRoute);
@@ -485,13 +496,13 @@ public class GameManager : MonoBehaviour
 
         if (!offlineData.isValid)
         {
-            LogMessage($"离线时间异常：{offlineData.reason}");
+            LogMessage($"Invalid offline time: {offlineData.reason}");
             return;
         }
 
         if (offlineData.totalMinutes < minOfflineMinutes)
         {
-            LogMessage($"离线时间不足 {minOfflineMinutes} 分钟，无奖励");
+            LogMessage($"Offline time insufficient ({offlineData.totalMinutes:F1} min), minimum required: {minOfflineMinutes} min");
             return;
         }
 
@@ -636,31 +647,32 @@ public class GameManager : MonoBehaviour
     {
         var rewardMessages = new List<string>();
 
-        // 应用经验奖励
+        // Apply experience rewards
         if (rewards.expReward > 0)
         {
             characterSystem?.GainExperience(rewards.expReward);
-            rewardMessages.Add($"经验 +{rewards.expReward:N0}");
+            rewardMessages.Add($"EXP +{rewards.expReward:N0}");
         }
 
-        // 应用金币奖励
+        // Apply coin rewards
         if (rewards.coinReward > 0)
         {
             AddCoins(rewards.coinReward);
-            rewardMessages.Add($"金币 +{rewards.coinReward:N0}");
+            rewardMessages.Add($"Coins +{rewards.coinReward:N0}");
         }
 
-        // 记录详细日志
+        // Log detailed information
         var rewardSummary = string.Join(", ", rewardMessages);
-        var bonusText = rewards.hasBonus ? $" (倍率: {rewards.bonusMultiplier:F1}x)" : "";
+        var bonusText = rewards.hasBonus ? $" (Multiplier: {rewards.bonusMultiplier:F1}x)" : "";
 
-        LogMessage("=== 离线奖励 ===");
-        LogMessage($"离线时长: {rewards.offlineHours:F1} 小时");
-        LogMessage($"路线: {GetRouteDisplayName(rewards.route)}");
-        LogMessage($"奖励: {rewardSummary}{bonusText}");
-        LogMessage($"说明: {rewards.description}");
+        LogMessage("=== OFFLINE REWARDS ===");
+        LogMessage($"Offline Duration: {rewards.offlineHours:F1} hours");
+        LogMessage($"Route: {GetRouteDisplayName(rewards.route)}");
+        LogMessage($"Rewards: {rewardSummary}{bonusText}");
+        LogMessage($"Details: {rewards.description}");
 
-        if (rewards.simulatedBattles > 0) LogMessage($"模拟战斗: {rewards.simulatedBattles} 场");
+        if (rewards.simulatedBattles > 0)
+            LogMessage($"Simulated Battles: {rewards.simulatedBattles} fights");
     }
 
     #endregion
@@ -681,7 +693,7 @@ public class GameManager : MonoBehaviour
     private void OnSaveError(string error)
     {
         Debug.LogError($"[GameManager] Save error: {error}");
-        LogMessage($"保存出错：{error}");
+        // LogMessage($"Save error：{error}");
     }
 
     #endregion
