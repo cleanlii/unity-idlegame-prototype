@@ -5,6 +5,8 @@
 
 A Unity-based idle RPG prototype where players automatically grow through different routes, manage characters, and progress through a loop idle systems.
 
+![ScreenShot1](Screenshots/s1.png)
+
 ## Core Concept
 
 ### Easy Idle
@@ -56,6 +58,9 @@ Assets/Scripts/
 │   ├── IdleGameConst.cs         # Game constants and file paths
 │   └── LogEntryUI.cs            # UI components for log entries
 └── UIManager.cs                  # UI coordination and animation
+
+And more....
+
 ```
 
 ---
@@ -174,10 +179,11 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
 - **JsonUtils**: Serialized and encrypted JSON file handling for safe saving/loading
 - **ServiceLocator**: Centralized service (Manager/Controller/System) registration, retrieval, and lifecycle management
 - **IdleGameConst**: Unified access point for constant parameters and global settings
-- **LubanConfig**: External spreadsheet-to-data pipeline for scalable content editing
+- **LubanConfig (TODO)**: External spreadsheet-to-data pipeline for scalable content editing
 
 ### **Testing Editor Tools**
-TBD
+![ScreenShot2](Screenshots/s2.png)
+- **CharacterDataEditor**: A useful tool for quick build and test (gacha, upgrading, etc.)
 
 ### **Future Plan**
 #### Structure
