@@ -7,7 +7,7 @@ using UnityEngine;
 namespace IdleGame.Editor
 {
     /// <summary>
-    ///     角色配置的自定义Inspector编辑器
+    ///     Custom Inspector editor for CharacterConfig
     /// </summary>
     [CustomEditor(typeof(CharacterConfig))]
     public class CharacterConfigEditor : UnityEditor.Editor
@@ -25,16 +25,16 @@ namespace IdleGame.Editor
         {
             serializedObject.Update();
 
-            // 绘制默认Inspector
+            // Draw default inspector
             DrawDefaultInspector();
 
             EditorGUILayout.Space(10);
 
-            // 预览区域
-            showPreviewStats = EditorGUILayout.Foldout(showPreviewStats, "属性预览", true);
+            // Preview section
+            showPreviewStats = EditorGUILayout.Foldout(showPreviewStats, "Preview Stats", true);
             if (showPreviewStats) DrawPreviewSection();
 
-            // 工具按钮
+            // Tool buttons
             EditorGUILayout.Space(5);
             DrawToolButtons();
 
@@ -42,21 +42,21 @@ namespace IdleGame.Editor
         }
 
         /// <summary>
-        ///     绘制属性预览区域
+        ///     Draw preview stats section
         /// </summary>
         private void DrawPreviewSection()
         {
             EditorGUILayout.BeginVertical("Box");
 
-            // 等级选择器
-            previewLevel = EditorGUILayout.IntSlider("预览等级", previewLevel, 1, 50);
+            // Level selector
+            previewLevel = EditorGUILayout.IntSlider("Preview Level", previewLevel, 1, 50);
 
             EditorGUILayout.Space(5);
 
-            // 属性显示
+            // Attributes display
             if (config != null)
             {
-                EditorGUILayout.LabelField("等级属性", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("Level Stats", EditorStyles.boldLabel);
 
                 var maxHP = config.CalculateMaxHP(previewLevel);
                 var attack = config.CalculateAttack(previewLevel);
@@ -65,46 +65,46 @@ namespace IdleGame.Editor
                 var powerScore = config.CalculatePowerScore(previewLevel);
                 var expRequired = config.CalculateExpRequired(previewLevel);
 
-                EditorGUILayout.LabelField($"最大HP: {maxHP:F0}");
-                EditorGUILayout.LabelField($"攻击力: {attack:F0}");
-                EditorGUILayout.LabelField($"防御力: {defense:F0}");
-                EditorGUILayout.LabelField($"暴击率: {critRate:P1}");
-                EditorGUILayout.LabelField($"战力评分: {powerScore:F0}");
-                EditorGUILayout.LabelField($"升级经验: {expRequired:N0}");
+                EditorGUILayout.LabelField($"Max HP: {maxHP:F0}");
+                EditorGUILayout.LabelField($"Attack: {attack:F0}");
+                EditorGUILayout.LabelField($"Defense: {defense:F0}");
+                EditorGUILayout.LabelField($"Crit Rate: {critRate:P1}");
+                EditorGUILayout.LabelField($"Power Score: {powerScore:F0}");
+                EditorGUILayout.LabelField($"EXP Required: {expRequired:N0}");
             }
 
             EditorGUILayout.EndVertical();
         }
 
         /// <summary>
-        ///     绘制工具按钮
+        ///     Draw tool buttons
         /// </summary>
         private void DrawToolButtons()
         {
             EditorGUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("创建测试角色数据")) CreateTestCharacterData();
+            if (GUILayout.Button("Create Test Character Data")) CreateTestCharacterData();
 
-            if (GUILayout.Button("验证配置")) ValidateConfig();
+            if (GUILayout.Button("Validate Config")) ValidateConfig();
 
             EditorGUILayout.EndHorizontal();
         }
 
         /// <summary>
-        ///     创建测试角色数据
+        ///     Create test character data
         /// </summary>
         private void CreateTestCharacterData()
         {
             if (config != null)
             {
                 var testData = config.CreateCharacterData();
-                Debug.Log($"创建测试角色: {testData.GetCharacterInfo()}\n" +
-                          $"基础属性 - HP:{testData.GetMaxHP():F0} ATK:{testData.GetAttack():F0} DEF:{testData.GetDefense():F0}");
+                Debug.Log($"Created test character: {testData.GetCharacterInfo()}\n" +
+                          $"Base Stats - HP:{testData.GetMaxHP():F0} ATK:{testData.GetAttack():F0} DEF:{testData.GetDefense():F0}");
             }
         }
 
         /// <summary>
-        ///     验证配置
+        ///     Validate config
         /// </summary>
         private void ValidateConfig()
         {
@@ -112,39 +112,39 @@ namespace IdleGame.Editor
 
             if (config == null) return;
 
-            // 验证基本信息
+            // Validate basic info
             if (string.IsNullOrEmpty(config.characterID))
-                issues.Add("角色ID为空");
+                issues.Add("Character ID is empty");
 
             if (string.IsNullOrEmpty(config.characterName))
-                issues.Add("角色名称为空");
+                issues.Add("Character name is empty");
 
-            // 验证数值
+            // Validate values
             if (config.baseMaxHP <= 0)
-                issues.Add("基础HP必须大于0");
+                issues.Add("Base HP must be greater than 0");
 
             if (config.baseAttack <= 0)
-                issues.Add("基础攻击力必须大于0");
+                issues.Add("Base Attack must be greater than 0");
 
             if (config.baseExpRequired <= 0)
-                issues.Add("基础经验要求必须大于0");
+                issues.Add("Base EXP Required must be greater than 0");
 
             if (config.expGrowthFactor <= 1.0f)
-                issues.Add("经验增长系数应该大于1.0");
+                issues.Add("EXP Growth Factor should be greater than 1.0");
 
-            // 输出结果
+            // Output result
             if (issues.Count == 0)
-                EditorUtility.DisplayDialog("验证结果", "配置验证通过，无问题发现！", "确定");
+                EditorUtility.DisplayDialog("Validation Result", "Config validated successfully, no issues found!", "OK");
             else
             {
-                var message = "发现以下问题:\n" + string.Join("\n", issues);
-                EditorUtility.DisplayDialog("验证结果", message, "确定");
+                var message = "Found the following issues:\n" + string.Join("\n", issues);
+                EditorUtility.DisplayDialog("Validation Result", message, "OK");
             }
         }
     }
 
     /// <summary>
-    ///     角色数据库的自定义Inspector编辑器
+    ///     Custom Inspector editor for CharacterDatabase
     /// </summary>
     [CustomEditor(typeof(CharacterDatabase))]
     public class CharacterDatabaseEditor : UnityEditor.Editor
@@ -161,19 +161,19 @@ namespace IdleGame.Editor
         {
             serializedObject.Update();
 
-            // 绘制默认Inspector
+            // Draw default inspector
             DrawDefaultInspector();
 
             EditorGUILayout.Space(10);
 
-            // 统计信息
+            // Statistics
             DrawStatistics();
 
-            // 抽卡预览
-            showGachaPreview = EditorGUILayout.Foldout(showGachaPreview, "抽卡概率预览", true);
+            // Gacha preview
+            showGachaPreview = EditorGUILayout.Foldout(showGachaPreview, "Gacha Probability Preview", true);
             if (showGachaPreview) DrawGachaPreview();
 
-            // 工具按钮
+            // Tool buttons
             EditorGUILayout.Space(5);
             DrawDatabaseTools();
 
@@ -181,12 +181,12 @@ namespace IdleGame.Editor
         }
 
         /// <summary>
-        ///     绘制统计信息
+        ///     Draw statistics
         /// </summary>
         private void DrawStatistics()
         {
             EditorGUILayout.BeginVertical("Box");
-            EditorGUILayout.LabelField("数据库统计", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Database Statistics", EditorStyles.boldLabel);
 
             if (database != null)
             {
@@ -196,15 +196,15 @@ namespace IdleGame.Editor
                 var epicCount = database.GetCharactersByRarity(CharacterRarity.Epic).Count;
                 var legendaryCount = database.GetCharactersByRarity(CharacterRarity.Legendary).Count;
 
-                EditorGUILayout.LabelField($"总计角色: {totalCount}");
-                EditorGUILayout.LabelField($"普通: {commonCount}, 稀有: {rareCount}, 史诗: {epicCount}, 传说: {legendaryCount}");
+                EditorGUILayout.LabelField($"Total Characters: {totalCount}");
+                EditorGUILayout.LabelField($"Common: {commonCount}, Rare: {rareCount}, Epic: {epicCount}, Legendary: {legendaryCount}");
             }
 
             EditorGUILayout.EndVertical();
         }
 
         /// <summary>
-        ///     绘制抽卡预览
+        ///     Draw gacha preview
         /// </summary>
         private void DrawGachaPreview()
         {
@@ -213,31 +213,31 @@ namespace IdleGame.Editor
             if (database?.gachaSettings != null)
             {
                 var gacha = database.gachaSettings;
-                EditorGUILayout.LabelField($"普通: {gacha.GetRarityProbability(CharacterRarity.Common):F1}%");
-                EditorGUILayout.LabelField($"稀有: {gacha.GetRarityProbability(CharacterRarity.Rare):F1}%");
-                EditorGUILayout.LabelField($"史诗: {gacha.GetRarityProbability(CharacterRarity.Epic):F1}%");
-                EditorGUILayout.LabelField($"传说: {gacha.GetRarityProbability(CharacterRarity.Legendary):F1}%");
+                EditorGUILayout.LabelField($"Common: {gacha.GetRarityProbability(CharacterRarity.Common):F1}%");
+                EditorGUILayout.LabelField($"Rare: {gacha.GetRarityProbability(CharacterRarity.Rare):F1}%");
+                EditorGUILayout.LabelField($"Epic: {gacha.GetRarityProbability(CharacterRarity.Epic):F1}%");
+                EditorGUILayout.LabelField($"Legendary: {gacha.GetRarityProbability(CharacterRarity.Legendary):F1}%");
             }
 
             EditorGUILayout.EndVertical();
         }
 
         /// <summary>
-        ///     绘制数据库工具
+        ///     Draw database tools
         /// </summary>
         private void DrawDatabaseTools()
         {
             EditorGUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("验证数据库")) database?.ValidateDatabase();
+            if (GUILayout.Button("Validate Database")) database?.ValidateDatabase();
 
-            if (GUILayout.Button("测试随机抽取")) TestRandomGacha();
+            if (GUILayout.Button("Test Random Gacha")) TestRandomGacha();
 
             EditorGUILayout.EndHorizontal();
         }
 
         /// <summary>
-        ///     测试随机抽取
+        ///     Test random gacha
         /// </summary>
         private void TestRandomGacha()
         {
@@ -245,9 +245,9 @@ namespace IdleGame.Editor
             {
                 var randomChar = database.GetRandomCharacter();
                 if (randomChar != null)
-                    Debug.Log($"随机抽取到: {randomChar.characterName} ({randomChar.rarity})");
+                    Debug.Log($"Randomly pulled: {randomChar.characterName} ({randomChar.rarity})");
                 else
-                    Debug.LogWarning("未能抽取到角色，请检查数据库配置");
+                    Debug.LogWarning("Failed to pull character, please check database config");
             }
         }
     }

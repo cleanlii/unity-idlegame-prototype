@@ -52,7 +52,6 @@ Assets/Scripts/
 │   └── OfflineRewardConfig.cs   # Offline progression settings
 ├── Utils/                        # Utility and helper classes
 │   ├── ServiceLocator.cs        # Dependency injection pattern
-│   ├── EventManager.cs          # Type-safe event system
 │   ├── JsonUtils.cs             # Encrypted JSON serialization
 │   ├── IdleGameConst.cs         # Game constants and file paths
 │   └── LogEntryUI.cs            # UI components for log entries

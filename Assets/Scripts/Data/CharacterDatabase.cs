@@ -7,18 +7,18 @@ using Random = UnityEngine.Random;
 namespace IdleGame.Character
 {
     /// <summary>
-    ///     角色配置数据库 - 管理所有角色配置的ScriptableObject
+    ///     Character configuration database - manages all CharacterConfig ScriptableObjects
     /// </summary>
     [CreateAssetMenu(fileName = "CharacterDatabase", menuName = "IdleGame/Character Database")]
     public class CharacterDatabase : ScriptableObject
     {
-        [Header("角色配置列表")]
+        [Header("Character Config List")]
         public List<CharacterConfig> allCharacters = new();
 
-        [Header("默认角色")]
+        [Header("Default Character")]
         public CharacterConfig defaultCharacter;
 
-        [Header("抽卡权重设置")]
+        [Header("Gacha Weight Settings")]
         public GachaSettings gachaSettings = new();
 
         private Dictionary<string, CharacterConfig> characterLookup;
@@ -29,7 +29,7 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     刷新查找字典
+        ///     Refresh lookup dictionary
         /// </summary>
         private void RefreshLookup()
         {
@@ -41,7 +41,7 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     根据ID获取角色配置
+        ///     Get character config by ID
         /// </summary>
         public CharacterConfig GetCharacterConfig(string characterID)
         {
@@ -51,7 +51,7 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     获取指定稀有度的角色列表
+        ///     Get character list by rarity
         /// </summary>
         public List<CharacterConfig> GetCharactersByRarity(CharacterRarity rarity)
         {
@@ -59,7 +59,7 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     获取默认角色配置
+        ///     Get default character config
         /// </summary>
         public CharacterConfig GetDefaultCharacter()
         {
@@ -67,13 +67,13 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     随机抽取一个角色 (基于稀有度权重)
+        ///     Get a random character (based on rarity weights)
         /// </summary>
         public CharacterConfig GetRandomCharacter()
         {
             if (allCharacters.Count == 0) return null;
 
-            // 根据稀有度权重随机选择
+            // Random selection based on rarity weights
             var totalWeight = 0f;
             var weightedCharacters = new List<WeightedCharacter>();
 
@@ -92,63 +92,63 @@ namespace IdleGame.Character
                 });
             }
 
-            // 随机选择
+            // Random pick
             var randomValue = Random.Range(0f, totalWeight);
             return weightedCharacters.FirstOrDefault(wc => randomValue <= wc.cumulativeWeight)?.character;
         }
 
         /// <summary>
-        ///     验证数据库配置
+        ///     Validate database config
         /// </summary>
-        [ContextMenu("验证配置")]
+        [ContextMenu("Validate Config")]
         public void ValidateDatabase()
         {
             var issues = new List<string>();
 
-            // 检查空引用
+            // Check null references
             for (var i = 0; i < allCharacters.Count; i++)
             {
-                if (allCharacters[i] == null) issues.Add($"角色列表索引 {i} 为空");
+                if (allCharacters[i] == null) issues.Add($"Character list index {i} is null");
             }
 
-            // 检查重复ID
+            // Check duplicate IDs
             var ids = new HashSet<string>();
             foreach (var character in allCharacters)
             {
                 if (character != null)
                 {
                     if (string.IsNullOrEmpty(character.characterID))
-                        issues.Add($"角色 {character.name} 缺少ID");
+                        issues.Add($"Character {character.name} is missing ID");
                     else if (ids.Contains(character.characterID))
-                        issues.Add($"重复的角色ID: {character.characterID}");
+                        issues.Add($"Duplicate character ID: {character.characterID}");
                     else
                         ids.Add(character.characterID);
                 }
             }
 
-            // 检查默认角色
+            // Check default character
             if (defaultCharacter == null)
-                issues.Add("未设置默认角色");
-            else if (!allCharacters.Contains(defaultCharacter)) issues.Add("默认角色不在角色列表中");
+                issues.Add("Default character not set");
+            else if (!allCharacters.Contains(defaultCharacter)) issues.Add("Default character is not in the character list");
 
-            // 输出结果
+            // Output results
             if (issues.Count == 0)
-                Debug.Log("[CharacterDatabase] 验证通过，无问题发现");
+                Debug.Log("[CharacterDatabase] Validation passed, no issues found");
             else
-                Debug.LogWarning($"[CharacterDatabase] 发现 {issues.Count} 个问题:\n" + string.Join("\n", issues));
+                Debug.LogWarning($"[CharacterDatabase] Found {issues.Count} issues:\n" + string.Join("\n", issues));
         }
 
         private void OnValidate()
         {
-            // 自动移除空引用
+            // Automatically remove null references if needed
             // allCharacters.RemoveAll(c => c == null);
 
-            // 刷新查找表
+            // Refresh lookup table
             RefreshLookup();
         }
 
         /// <summary>
-        ///     权重角色结构
+        ///     Weighted character structure
         /// </summary>
         private class WeightedCharacter
         {
@@ -159,26 +159,26 @@ namespace IdleGame.Character
     }
 
     /// <summary>
-    ///     抽卡设置
+    ///     Gacha settings
     /// </summary>
     [Serializable]
     public class GachaSettings
     {
-        [Header("稀有度权重")]
+        [Header("Rarity Weights")]
         [Range(0f, 100f)]
-        public float commonWeight = 60f; // 普通 60%
+        public float commonWeight = 60f; // Common 60%
 
         [Range(0f, 100f)]
-        public float rareWeight = 25f; // 稀有 25%
+        public float rareWeight = 25f; // Rare 25%
 
         [Range(0f, 100f)]
-        public float epicWeight = 12f; // 史诗 12%
+        public float epicWeight = 12f; // Epic 12%
 
         [Range(0f, 100f)]
-        public float legendaryWeight = 3f; // 传说 3%
+        public float legendaryWeight = 3f; // Legendary 3%
 
         /// <summary>
-        ///     获取指定稀有度的权重
+        ///     Get weight of a specific rarity
         /// </summary>
         public float GetRarityWeight(CharacterRarity rarity)
         {
@@ -193,7 +193,7 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        ///     获取稀有度概率 (百分比)
+        ///     Get probability of a rarity (percentage)
         /// </summary>
         public float GetRarityProbability(CharacterRarity rarity)
         {

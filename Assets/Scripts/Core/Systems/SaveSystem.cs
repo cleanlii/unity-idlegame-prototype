@@ -6,7 +6,7 @@ using UnityEngine;
 namespace IdleGame.Core
 {
     /// <summary>
-    ///     存档系统 - 处理PlayerData的保存和加载
+    ///     Save and load logic for PlayerData
     /// </summary>
     public static class SaveSystem
     {

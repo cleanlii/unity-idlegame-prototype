@@ -5,24 +5,24 @@ using Random = UnityEngine.Random;
 namespace IdleGame.Character
 {
     /// <summary>
-    ///     角色数据类 - 存储角色的运行时状态和升级信息
-    ///     基于CharacterConfig配置，包含当前状态（血量、经验等）
+    ///     Character data which stores runtime state and level-up information
+    ///     Based on CharacterConfig, includes current stats (HP, EXP, etc.)
     /// </summary>
     [Serializable]
     public class CharacterData
     {
-        [Header("配置引用")]
+        [Header("Configuration")]
         public CharacterConfig config; // 角色配置引用
 
-        [Header("持久化数据")]
+        [Header("Basic Info")]
         public int level = 1; // 当前等级 (持久化)
         public long totalExperience; // 总经验值 (持久化)
 
-        [Header("运行时状态 - 仅当前角色有效")]
+        [Header("Current Status")]
         public float currentHP; // 当前生命值 (运行时，切换角色时重置)
         public long currentLevelExp; // 当前等级经验 (运行时)
 
-        [Header("战斗统计 - 持久化")]
+        [Header("Battle Statistics")]
         public int totalBattles;
         public int victoriesCount;
         public long totalDamageDealt;
@@ -59,7 +59,7 @@ namespace IdleGame.Character
             RefreshRuntimeState();
         }
 
-        #region 属性获取 (带缓存优化)
+        #region Cached Property Access
 
         /// <summary>
         ///     获取最大HP
@@ -115,7 +115,7 @@ namespace IdleGame.Character
 
         #endregion
 
-        #region 经验和升级系统
+        #region EXP Management
 
         /// <summary>
         ///     获取当前等级升级所需经验
@@ -139,18 +139,18 @@ namespace IdleGame.Character
         }
 
         /// <summary>
-        /// 获得经验值
+        ///     获得经验值
         /// </summary>
         public bool GainExperience(long expAmount)
         {
             if (expAmount <= 0) return false;
 
             totalExperience += expAmount;
-            bool leveledUp = CheckLevelUp();
-            
+            var leveledUp = CheckLevelUp();
+
             // 重新计算当前等级经验
             RefreshCurrentLevelExp();
-            
+
             return leveledUp;
         }
 
@@ -178,22 +178,22 @@ namespace IdleGame.Character
 
             return leveledUp;
         }
-        
+
         /// <summary>
-        /// 刷新当前等级经验
+        ///     刷新当前等级经验
         /// </summary>
         private void RefreshCurrentLevelExp()
         {
-            long expForCurrentLevel = config.CalculateExpRequired(level);
+            var expForCurrentLevel = config.CalculateExpRequired(level);
             currentLevelExp = totalExperience - expForCurrentLevel;
-            
+
             // 确保当前等级经验不为负数
             if (currentLevelExp < 0) currentLevelExp = 0;
         }
 
         #endregion
 
-        #region 战斗系统
+        #region Battle Logic
 
         /// <summary>
         ///     获取攻击伤害 (包含随机波动和暴击)
@@ -210,8 +210,8 @@ namespace IdleGame.Character
             if (Random.Range(0f, 1f) < GetCriticalRate()) damage *= GetCriticalDamage();
 
             // 检查特殊技能 (如果有的话)
-            if (config.hasSpecialAbility && Random.Range(0f, 1f) < 0.1f) // 10%触发率
-                damage *= config.specialAbilityMultiplier;
+            // if (config.hasSpecialAbility && Random.Range(0f, 1f) < 0.1f) // 10%触发率
+            //     damage *= config.specialAbilityMultiplier;
 
             return damage;
         }
@@ -252,7 +252,7 @@ namespace IdleGame.Character
 
         #endregion
 
-        #region 状态管理
+        #region State Management
 
         /// <summary>
         ///     刷新运行时状态 (切换角色时调用)
@@ -290,7 +290,7 @@ namespace IdleGame.Character
 
         #endregion
 
-        #region 统计和信息
+        #region Staistics
 
         /// <summary>
         ///     记录战斗结果
@@ -328,50 +328,16 @@ namespace IdleGame.Character
         }
 
         #endregion
-
-        #region 序列化支持
-
-        /// <summary>
-        ///     获取存档数据
-        /// </summary>
-        public CharacterSaveData GetSaveData()
-        {
-            return new CharacterSaveData
-            {
-                configID = config.characterID,
-                level = level,
-                totalExperience = totalExperience,
-                totalBattles = totalBattles,
-                victoriesCount = victoriesCount,
-                totalDamageDealt = totalDamageDealt,
-                totalDamageTaken = totalDamageTaken
-            };
-        }
-
-        #endregion
     }
-
 
     /// <summary>
-    ///     角色存档数据
+    ///     Character rarity levels
     /// </summary>
-    [Serializable]
-    public class CharacterSaveData
-    {
-        public string configID;
-        public int level;
-        public long totalExperience;
-        public int totalBattles;
-        public int victoriesCount;
-        public long totalDamageDealt;
-        public long totalDamageTaken;
-    }
-
     public enum CharacterRarity
     {
-        Common = 1, // 普通 - 白色
-        Rare = 2, // 稀有 - 蓝色  
-        Epic = 3, // 史诗 - 紫色
-        Legendary = 4 // 传说 - 金色
+        Common = 1, // 普通
+        Rare = 2, // 稀有  
+        Epic = 3, // 史诗
+        Legendary = 4 // 传说
     }
 }

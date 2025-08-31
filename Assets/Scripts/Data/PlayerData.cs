@@ -6,38 +6,41 @@ using UnityEngine;
 
 namespace IdleGame.Analytics
 {
+    /// <summary>
+    ///     Main save data for player
+    /// </summary>
     [Serializable]
     public class PlayerData
     {
-        [Header("基本信息")]
+        [Header("Basic Information")]
         public string playerID; // 玩家唯一ID
         public string playerName = "Player"; // 玩家昵称
         public DateTime createTime; // 创建时间
         public DateTime lastLoginTime; // 最后登录时间
         public DateTime lastSaveTime; // 最后保存时间
 
-        [Header("游戏进度")]
+        [Header("Game Progress")]
         public int playerLevel = 1; // 玩家等级 (账号等级)
         public long totalPlayTime; // 总游戏时长 (秒)
         public int currentFloor = 1; // 当前爬塔层数
         public int maxFloorReached = 1; // 历史最高层数
 
-        [Header("货币系统 - 统一使用金币")]
+        [Header("Currency Info")]
         public long coins = 1000; // 金币数量 (主货币，用于所有消费)
         public long totalCoinsEarned; // 总获得金币
         public long totalCoinsSpent; // 总花费金币
 
-        [Header("角色系统")]
+        [Header("Character Info")]
         public string currentCharacterID = ""; // 当前使用角色ID
         public List<CharacterSaveData> ownedCharacters = new(); // 拥有的角色存档数据
 
-        [Header("路线系统")]
+        [Header("Route Info")]
         public RouteType selectedRoute = RouteType.Battle; // 当前选择的路线
         public long battleRouteTime; // 战斗路线累计时间
         public long economyRouteTime; // 经济路线累计时间  
         public long experienceRouteTime; // 经验路线累计时间
 
-        [Header("战斗统计")]
+        [Header("Battle Info")]
         public long totalBattles; // 总战斗次数
         public long totalVictories; // 总胜利次数
         public long totalDefeats; // 总失败次数
@@ -46,17 +49,17 @@ namespace IdleGame.Analytics
         public int longestWinStreak; // 最长连胜
         public int currentWinStreak; // 当前连胜
 
-        [Header("消费统计")]
+        [Header("Statistics")]
         public long totalExpPurchased; // 总购买经验值
         public long totalExpCostPaid; // 购买经验花费的金币
         public int totalGachaUsed; // 总抽卡次数
         public long totalGachaCostPaid; // 抽卡花费的金币
 
-        [Header("离线数据")]
+        [Header("Offline Data")]
         public long offlineDuration; // 离线时长 (秒)
         public long totalOfflineRewards; // 总离线奖励
 
-        [Header("游戏设置")]
+        [Header("Game Settings (TODO)")]
         public float musicVolume = 1f; // 音乐音量
         public float sfxVolume = 1f; // 音效音量
         public bool enableNotifications = true; // 是否开启通知
@@ -75,7 +78,7 @@ namespace IdleGame.Analytics
             InitializeDefaultData();
         }
 
-        #region 初始化
+        #region Initialization
 
         /// <summary>
         ///     初始化默认数据
@@ -102,7 +105,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 货币系统
+        #region Currency
 
         /// <summary>
         ///     添加金币
@@ -176,7 +179,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 角色管理
+        #region Character
 
         public bool HasCharacter(string characterID)
         {
@@ -267,7 +270,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 战斗统计
+        #region Battle
 
         /// <summary>
         ///     记录战斗结果
@@ -310,7 +313,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 时间管理
+        #region Timer
 
         /// <summary>
         ///     更新在线时长
@@ -373,7 +376,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 综合统计
+        #region Analytics
 
         /// <summary>
         ///     获取玩家综合战力评分
@@ -428,7 +431,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 数据验证
+        #region Validation
 
         /// <summary>
         ///     验证数据完整性
@@ -487,7 +490,7 @@ namespace IdleGame.Analytics
     }
 
     /// <summary>
-    ///     角色存档数据 - 用于PlayerData中存储角色信息
+    ///     Save data for specific character
     /// </summary>
     [Serializable]
     public class CharacterSaveData

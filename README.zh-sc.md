@@ -30,18 +30,18 @@
 
 ```
 Assets/Scripts/
-├── Core/                          # 核心游戏系统
+├── Core/                          # 底层代码
 │   ├── GameManager.cs            # 主游戏协调器和入口点
 │   ├── BattleManager.cs          # 自动战斗系统和战斗逻辑
 │   ├── PlayerController.cs      # 玩家在路线间的移动
-│   └── Systems/                  # 专业化游戏系统
+│   └── Systems/                  # 系统类
 │       ├── CharacterSystem.cs   # 角色管理和进度系统
 │       ├── SpireSystem.cs       # 路线管理和切换逻辑
 │       ├── SaveSystem.cs        # 数据持久化和加密
 │       ├── IdleLogSystem.cs     # 实时行为日志系统
-│       ├── EcoSystem.cs         # （经济功能占位符）
-│       └── GachaSystem.cs       # （抽卡机制占位符）
-├── Data/                         # ScriptableObject配置文件
+│       ├── EcoSystem.cs         # （独立经济功能占位符）
+│       └── GachaSystem.cs       # （独立抽卡机制占位符）
+├── Data/                         # 数据类
 │   ├── PlayerData.cs            # 玩家进度和统计数据
 │   ├── CharacterConfig.cs       # 角色模板和成长曲线
 │   ├── CharacterData.cs         # 运行时角色实例
@@ -49,10 +49,9 @@ Assets/Scripts/
 │   ├── EnemyConfig.cs           # 敌人模板
 │   ├── EnemyData.cs             # 运行时敌人实例
 │   ├── RouteConfig.cs           # 路线奖励配置
-│   └── OfflineRewardConfig.cs   # 离线进度设置
+│   └── OfflineRewardConfig.cs   # 离线奖励配置信息
 ├── Utils/                        # 工具和辅助类
 │   ├── ServiceLocator.cs        # 依赖注入模式
-│   ├── EventManager.cs          # 类型安全事件系统
 │   ├── JsonUtils.cs             # 加密JSON序列化
 │   ├── IdleGameConst.cs         # 游戏常量和文件路径
 │   └── LogEntryUI.cs            # 日志条目UI组件

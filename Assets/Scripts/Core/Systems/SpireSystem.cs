@@ -10,42 +10,39 @@ namespace IdleGame.Gameplay
     public enum RouteType
     {
         None,
-        Battle, // 战斗线
-        Economy, // 金币线
-        Experience // 经验线
+        Battle, // Enemy fighting
+        Economy, // Auto coins generation
+        Experience // Auto EXP generation
     }
 
     public class SpireSystem : MonoBehaviour
     {
-        [Header("路线配置")]
+        [Header("Route Configuration")]
         public RouteConfig battleRouteConfig;
         public RouteConfig economyRouteConfig;
         public RouteConfig experienceRouteConfig;
 
-        [Header("敌人配置")]
-        public EnemyConfig[] enemyConfigs; // 敌人配置列表
+        [Header("Enemy Configuration")]
+        public EnemyConfig[] enemyConfigs;
 
-        [Header("运行时状态")]
+        [Header("Runtime Status")]
         public RouteType currentRoute = RouteType.None;
-        public EnemyData currentEnemy; // 当前待战敌人
-        public float routeTimer; // 路线计时器
+        public EnemyData currentEnemy;
+        public float routeTimer;
 
-        [Header("调试信息")]
+        [Header("Debug Settings")]
         public bool showDebugInfo = true;
         public float debugUpdateInterval = 1f;
 
-        // 系统引用
-        private GameManager gameManager;
-        private CharacterSystem characterSystem;
-        private IdleLogSystem logSystem;
-        private BattleManager battleManager;
+        private GameManager _gameManager;
+        private CharacterSystem _characterSystem;
+        private IdleLogSystem _logSystem;
+        private BattleManager _battleManager;
 
-        // 协程引用
-        private Coroutine routeCoroutine;
-        private Coroutine battleCoroutine;
-        private Coroutine debugCoroutine;
+        private Coroutine _routeCoroutine;
+        private Coroutine _battleCoroutine;
+        private Coroutine _debugCoroutine;
 
-        // 事件
         public Action<RouteType> OnRouteChanged;
         public Action<EnemyData> OnEnemySpawned;
         public Action<bool, EnemyData> OnBattleCompleted; // victory, enemy
@@ -55,15 +52,15 @@ namespace IdleGame.Gameplay
             StopAllCoroutines();
         }
 
-        #region 系统初始化
+        #region Initialization
 
         public void Initialize()
         {
             // 获取系统引用
-            gameManager = GameManager.Instance;
-            characterSystem = ServiceLocator.Get<CharacterSystem>();
-            logSystem = ServiceLocator.Get<IdleLogSystem>();
-            battleManager = ServiceLocator.Get<BattleManager>();
+            _gameManager = GameManager.Instance;
+            _characterSystem = ServiceLocator.Get<CharacterSystem>();
+            _logSystem = ServiceLocator.Get<IdleLogSystem>();
+            _battleManager = ServiceLocator.Get<BattleManager>();
 
             currentRoute = RouteType.None;
 
@@ -80,12 +77,12 @@ namespace IdleGame.Gameplay
 
             // 启动调试信息更新
             if (showDebugInfo)
-                debugCoroutine = StartCoroutine(DebugInfoCoroutine());
+                _debugCoroutine = StartCoroutine(DebugInfoCoroutine());
         }
 
         #endregion
 
-        #region 路线切换系统
+        #region Route Switching
 
         /// <summary>
         ///     切换到指定路线
@@ -106,7 +103,7 @@ namespace IdleGame.Gameplay
             // 如果从战斗线切换，停止战斗
             if (oldRoute == RouteType.Battle)
             {
-                battleManager.RefreshBattle();
+                _battleManager.RefreshBattle();
                 LogMessage("战斗被中断，敌人重新生成");
             }
 
@@ -121,16 +118,16 @@ namespace IdleGame.Gameplay
 
         private void StopCurrentRoute()
         {
-            if (routeCoroutine != null)
+            if (_routeCoroutine != null)
             {
-                StopCoroutine(routeCoroutine);
-                routeCoroutine = null;
+                StopCoroutine(_routeCoroutine);
+                _routeCoroutine = null;
             }
 
-            if (battleCoroutine != null)
+            if (_battleCoroutine != null)
             {
-                StopCoroutine(battleCoroutine);
-                battleCoroutine = null;
+                StopCoroutine(_battleCoroutine);
+                _battleCoroutine = null;
             }
         }
 
@@ -139,20 +136,20 @@ namespace IdleGame.Gameplay
             switch (currentRoute)
             {
                 case RouteType.Battle:
-                    routeCoroutine = StartCoroutine(BattleRouteCoroutine());
+                    _routeCoroutine = StartCoroutine(BattleRouteCoroutine());
                     break;
                 case RouteType.Economy:
-                    routeCoroutine = StartCoroutine(EconomyRouteCoroutine());
+                    _routeCoroutine = StartCoroutine(EconomyRouteCoroutine());
                     break;
                 case RouteType.Experience:
-                    routeCoroutine = StartCoroutine(ExperienceRouteCoroutine());
+                    _routeCoroutine = StartCoroutine(ExperienceRouteCoroutine());
                     break;
             }
         }
 
         #endregion
 
-        #region 路线协程实现
+        #region State Management
 
         /// <summary>
         ///     战斗线协程：只负责流程控制，具体战斗交给BattleManager
@@ -164,7 +161,7 @@ namespace IdleGame.Gameplay
             while (currentRoute == RouteType.Battle)
             {
                 // 检查是否有可用角色
-                if (characterSystem.currentCharacter.IsNull)
+                if (_characterSystem.currentCharacter.IsNull)
                 {
                     LogMessage("无可用角色，等待角色设置...");
                     yield return new WaitForSeconds(1f);
@@ -180,13 +177,13 @@ namespace IdleGame.Gameplay
                 }
 
                 // 检查BattleManager是否可以开始战斗
-                if (battleManager)
+                if (_battleManager)
                 {
                     // 委托给BattleManager执行具体战斗
-                    battleManager.StartBattle(currentEnemy);
+                    _battleManager.StartBattle(currentEnemy);
 
                     // 等待战斗结束
-                    while (battleManager.isBattleActive)
+                    while (_battleManager.isBattleActive)
                     {
                         yield return null; // 等待BattleManager完成战斗
                     }
@@ -219,7 +216,7 @@ namespace IdleGame.Gameplay
                 {
                     // 获得金币
                     var coinGain = economyRouteConfig.coinReward;
-                    gameManager.AddCoins(coinGain);
+                    _gameManager.AddCoins(coinGain);
 
                     LogMessage($"金币线收益：+{coinGain} 金币");
 
@@ -246,7 +243,7 @@ namespace IdleGame.Gameplay
                 {
                     // 获得经验
                     var expGain = experienceRouteConfig.expReward;
-                    characterSystem.GainExperience(expGain);
+                    _characterSystem.GainExperience(expGain);
 
                     LogMessage($"经验线收益：+{expGain} 经验");
 
@@ -260,7 +257,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 敌人管理
+        #region Enemy Spawn
 
         /// <summary>
         ///     生成下一个敌人
@@ -270,7 +267,7 @@ namespace IdleGame.Gameplay
             if (enemyConfigs == null || enemyConfigs.Length == 0) return;
 
             // 根据玩家等级选择合适的敌人配置
-            var playerLevel = characterSystem.currentCharacter?.level ?? 1;
+            var playerLevel = _characterSystem.currentCharacter?.level ?? 1;
             var enemyConfig = SelectEnemyConfig(playerLevel);
 
             // 创建敌人实例
@@ -278,7 +275,7 @@ namespace IdleGame.Gameplay
             ApplyEnemyConfig(currentEnemy, enemyConfig, playerLevel);
 
             // 通知BattleManager新敌人
-            if (battleManager != null) battleManager.SetCurrentEnemy(currentEnemy);
+            if (_battleManager != null) _battleManager.SetCurrentEnemy(currentEnemy);
 
             // 触发敌人生成事件
             OnEnemySpawned?.Invoke(currentEnemy);
@@ -321,7 +318,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 公开方法
+        #region Public API
 
         /// <summary>
         ///     获取当前路线配置
@@ -374,7 +371,7 @@ namespace IdleGame.Gameplay
             if (currentEnemy == null)
                 return "无敌人";
 
-            if (!battleManager.isBattleActive)
+            if (!_battleManager.isBattleActive)
                 return $"待战敌人: {currentEnemy.enemyName} (Lv.{currentEnemy.recommendedLevel})";
 
             var enemyHpPercent = currentEnemy.currentHP / currentEnemy.maxHP * 100f;
@@ -383,7 +380,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 调试和测试
+        #region Debug Methods
 
         private IEnumerator DebugInfoCoroutine()
         {
@@ -423,7 +420,7 @@ namespace IdleGame.Gameplay
 
         private void LogMessage(string message)
         {
-            logSystem?.LogMessage(message);
+            _logSystem?.LogMessage(message);
             Debug.Log($"[SpireSystem] {message}");
         }
     }

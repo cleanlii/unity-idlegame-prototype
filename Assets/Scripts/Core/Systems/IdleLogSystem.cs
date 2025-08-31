@@ -506,30 +506,6 @@ namespace IdleGame.Analytics
             LogDamage(damage, isPlayerDamage, characterName, enemyName);
         }
 
-        /// <summary>
-        /// 兼容原有的LogOfflineReward方法
-        /// </summary>
-        // public void LogOfflineReward(string rewardType, int amount, float offlineHours)
-        // {
-        //     LogOfflineReward(rewardType, amount, offlineHours);
-        // }
-
-        /// <summary>
-        ///     获取最近日志（字符串数组格式，兼容原有代码）
-        /// </summary>
-        // public string[] GetRecentLogs(int count = 20)
-        // {
-        //     var entries = GetRecentLogs(count);
-        //     var result = new string[entries.Length];
-        //     
-        //     for (int i = 0; i < entries.Length; i++)
-        //     {
-        //         result[i] = entries[i].GetFormattedMessage();
-        //     }
-        //     
-        //     return result;
-        // }
-
         #endregion
 
         #region 调试方法

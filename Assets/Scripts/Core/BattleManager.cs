@@ -42,7 +42,7 @@ namespace IdleGame.Gameplay.Battle
         public Action<EnemyData> OnEnemyHPChanged;
         public Action OnPlayerDied;
         public Action OnPlayerRevived;
-        public Action OnBattleRestarted; // 新增：战斗重启事件
+        public Action OnBattleRestarted; // 战斗重启事件
 
         private void Start()
         {

@@ -11,22 +11,22 @@ public class UIManager : MonoBehaviour
 {
     private static UIManager _instance;
 
-    [Header("角色信息UI")]
+    [Header("Character Info UI")]
     [SerializeField] private TextMeshProUGUI characterNameText;
     [SerializeField] private TextMeshProUGUI characterLevelText;
     [SerializeField] private TextMeshProUGUI coinText;
     [SerializeField] private Slider hpSlider;
-    [SerializeField] private TextMeshProUGUI hpText; // "当前HP/最大HP" 格式
+    [SerializeField] private TextMeshProUGUI hpText; // "currentHP/maxHP" format
     [SerializeField] private Slider expSlider;
-    [SerializeField] private TextMeshProUGUI expText; // "当前EXP/下级所需EXP" 格式
+    [SerializeField] private TextMeshProUGUI expText; // "currentEXP/neededEXP" format
 
-    [Header("敌人信息UI")]
+    [Header("Enemy Info UI")]
     [SerializeField] private TextMeshProUGUI enemyNameText;
     [SerializeField] private TextMeshProUGUI enemyLevelText;
     [SerializeField] private Slider enemyHpSlider;
     [SerializeField] private TextMeshProUGUI enemyHpText;
 
-    [Header("功能按钮")]
+    [Header("Buttons")]
     [SerializeField] private Button getCoinButton;
     [SerializeField] private Button buyExpButton;
     [SerializeField] private Button gachaButton;
@@ -34,44 +34,44 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button economyRouteButton;
     [SerializeField] private Button experienceRouteButton;
 
-    [Header("路线显示")]
+    [Header("Route Display")]
     [SerializeField] private TextMeshProUGUI currentRouteText;
-    [SerializeField] private Image routeIndicator; // 路线指示器
+    [SerializeField] private Image routeIndicator;
     [SerializeField] private Color battleRouteColor = Color.red;
     [SerializeField] private Color economyRouteColor = Color.yellow;
     [SerializeField] private Color experienceRouteColor = Color.blue;
 
-    [Header("动画设置")]
+    [Header("Animation Settings")]
     [SerializeField] private float animationDuration = 0.5f;
     [SerializeField] private Ease animationEase = Ease.OutQuart;
     [SerializeField] private float numberCountDuration = 1f;
 
-    [Header("特效")]
-    [SerializeField] private GameObject levelUpEffect; // 升级特效
-    [SerializeField] private GameObject coinGainEffect; // 金币获得特效
-    [SerializeField] private GameObject expGainEffect; // 经验获得特效
+    [Header("VFX (TODO)")]
+    [SerializeField] private GameObject levelUpEffect;
+    [SerializeField] private GameObject coinGainEffect;
+    [SerializeField] private GameObject expGainEffect;
 
-    // 缓存数据，用于检测变化
-    private long lastCoinAmount;
-    private float lastHP;
-    private float lastMaxHP;
-    private long lastExp;
-    private long lastExpToNext;
-    private int lastLevel;
-    private string lastCharacterName = "";
+    // Cached data for player
+    private long _lastCoinAmount;
+    private float _lastHp;
+    private float _lastMaxHp;
+    private long _lastExp;
+    private long _lastExpToNext;
+    private int _lastLevel;
+    private string _lastCharacterName = "";
 
-    // 敌人相关缓存
-    private string lastEnemyName = "";
-    private int lastEnemyLevel;
-    private float lastEnemyHP;
-    private float lastEnemyMaxHP;
-    private bool lastBattleActiveState;
+    // Cached data for enemy
+    private string _lastEnemyName = "";
+    private int _lastEnemyLevel;
+    private float _lastEnemyHp;
+    private float _lastEnemyMaxHp;
+    private bool _lastBattleActiveState;
 
-    // 动画序列
-    private Sequence coinAnimSequence;
-    private Sequence hpAnimSequence;
-    private Sequence expAnimSequence;
-    private Sequence enemyHpAnimSequence;
+    // Anim sequence
+    private Sequence _coinAnimSequence;
+    private Sequence _hpAnimSequence;
+    private Sequence _expAnimSequence;
+    private Sequence _enemyHpAnimSequence;
 
     public static UIManager Instance
     {
@@ -104,13 +104,32 @@ public class UIManager : MonoBehaviour
         StartCoroutine(DelayedInitialization());
     }
 
+    private void Update()
+    {
+        // Low pace update for essential UI elements
+        if (Time.frameCount % 30 == 0) // 0.5s
+        {
+            UpdateCharacterInfo();
+            UpdateCoinDisplay();
+        }
+    }
+
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
         KillAllAnimations();
     }
 
-    #region 初始化
+    private void KillAllAnimations()
+    {
+        _coinAnimSequence?.Kill();
+        _hpAnimSequence?.Kill();
+        _expAnimSequence?.Kill();
+
+        DOTween.Kill(this);
+    }
+
+    #region Initialization
 
     private void InitializeUI()
     {
@@ -142,7 +161,7 @@ public class UIManager : MonoBehaviour
             });
         }
 
-        // 购买经验按钮
+        // But the XP
         if (buyExpButton != null)
         {
             buyExpButton.onClick.AddListener(() =>
@@ -152,7 +171,7 @@ public class UIManager : MonoBehaviour
             });
         }
 
-        // 抽卡按钮
+        // Gacha Test
         if (gachaButton != null)
         {
             gachaButton.onClick.AddListener(() =>
@@ -162,7 +181,7 @@ public class UIManager : MonoBehaviour
             });
         }
 
-        // 路线切换按钮
+        // Switch to battle route
         if (battleRouteButton != null)
         {
             battleRouteButton.onClick.AddListener(() =>
@@ -173,6 +192,7 @@ public class UIManager : MonoBehaviour
             });
         }
 
+        // Switch to eco route
         if (economyRouteButton != null)
         {
             economyRouteButton.onClick.AddListener(() =>
@@ -183,6 +203,7 @@ public class UIManager : MonoBehaviour
             });
         }
 
+        // Switch to exp route
         if (experienceRouteButton != null)
         {
             experienceRouteButton.onClick.AddListener(() =>
@@ -196,17 +217,17 @@ public class UIManager : MonoBehaviour
 
     #endregion
 
-    #region 事件订阅
+    #region Event Subscription
 
     private void SubscribeToEvents()
     {
         var gameManager = GameManager.Instance;
         if (gameManager != null)
         {
-            // 订阅货币变化事件
+            // Eco system
             gameManager.OnCurrencyChanged += OnCurrencyChanged;
 
-            // 订阅角色系统事件
+            // Character system
             if (gameManager.characterSystem != null)
             {
                 gameManager.characterSystem.OnCharacterSwitched += OnCharacterSwitched;
@@ -214,12 +235,14 @@ public class UIManager : MonoBehaviour
                 gameManager.characterSystem.OnExperienceGained += OnExperienceGained;
             }
 
+            // Spire system
             if (gameManager.spireSystem != null)
             {
                 gameManager.spireSystem.OnRouteChanged += UpdateRouteDisplay;
                 gameManager.spireSystem.OnEnemySpawned += UpdateEnemyInfo;
             }
 
+            // Battle feature
             if (gameManager.battleManager != null)
             {
                 gameManager.battleManager.OnEnemyHPChanged += OnEnemyHPChanged;
@@ -263,10 +286,10 @@ public class UIManager : MonoBehaviour
 
     #endregion
 
-    #region UI更新方法
+    #region Update UI Display
 
     /// <summary>
-    ///     更新所有UI元素
+    ///     Update all UI elements
     /// </summary>
     public void UpdateAllUI()
     {
@@ -277,7 +300,30 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     更新角色信息显示
+    ///     Damaging VFX
+    /// </summary>
+    private void PlayDamageNumberEffect(float damage, Color color, Transform target)
+    {
+        if (target == null) return;
+
+        target.DOPunchScale(Vector3.one * 0.08f, 0.15f);
+
+        // TODO: Jumping numbers...
+        // TODO: more efficient VFX...
+        var targetImage = target.GetComponent<Image>();
+        if (targetImage != null)
+        {
+            var originalColor = targetImage.color;
+            targetImage.DOColor(color, 0.1f).OnComplete(() => { targetImage.DOColor(originalColor, 0.2f); });
+        }
+    }
+
+    #endregion
+
+    #region Player UI
+
+    /// <summary>
+    ///     Update character info display
     /// </summary>
     private void UpdateCharacterInfo()
     {
@@ -292,21 +338,21 @@ public class UIManager : MonoBehaviour
 
         var character = characterSystem.currentCharacter;
 
-        // 更新角色名称
+        // Name
         UpdateCharacterName(character.config.characterName);
 
-        // 更新等级
+        // Level
         UpdateLevel(character.level);
 
-        // 更新血量
+        // HP
         UpdatePlayerHp(character.currentHP, character.GetMaxHP());
 
-        // 更新经验
+        // EXP
         UpdateExperience(character);
     }
 
     /// <summary>
-    ///     设置默认角色显示（无角色时）
+    ///     Set default character display (when no character is available)
     /// </summary>
     private void SetDefaultCharacterDisplay()
     {
@@ -318,377 +364,104 @@ public class UIManager : MonoBehaviour
         if (expText != null) expText.text = "0/0";
     }
 
-    /// <summary>
-    ///     更新角色名称
-    /// </summary>
     private void UpdateCharacterName(string newName)
     {
-        if (characterNameText == null || lastCharacterName == newName) return;
+        if (characterNameText == null || _lastCharacterName == newName) return;
 
-        lastCharacterName = newName;
+        _lastCharacterName = newName;
 
-        // 文字缩放动画
+        // Animation when update the text
         characterNameText.text = newName;
         characterNameText.transform.DOPunchScale(Vector3.one * 0.1f, 0.3f);
     }
 
-    /// <summary>
-    ///     更新等级显示
-    /// </summary>
     private void UpdateLevel(int newLevel)
     {
-        if (characterLevelText == null || lastLevel == newLevel) return;
+        if (!characterLevelText || _lastLevel == newLevel) return;
 
-        lastLevel = newLevel;
+        _lastLevel = newLevel;
 
-        // 等级变化动画
+        // Animation for upgrading
         characterLevelText.text = $"Lv.{newLevel}";
         characterLevelText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f);
     }
 
-    private void UpdateEnemyInfo()
+    private void UpdatePlayerHp(float currentHp, float maxHp)
     {
-        var battleManager = GameManager.Instance?.battleManager;
-        var spireSystem = GameManager.Instance?.spireSystem;
-        var currentEnemy = battleManager?.GetCurrentEnemy();
+        if (!hpSlider && !hpText) return;
 
-        // 检查是否应该显示敌人信息
-        var shouldShowEnemy = currentEnemy != null && spireSystem?.currentRoute == RouteType.Battle;
-
-        if (!shouldShowEnemy)
-        {
-            ResetEnemyUICache();
-            return;
-        }
-
-        // 显示并更新敌人信息
-        UpdateEnemyName(currentEnemy.enemyName);
-        UpdateEnemyLevel(currentEnemy.recommendedLevel);
-        UpdateEnemyHp(currentEnemy.currentHP, currentEnemy.maxHP);
-    }
-
-
-    /// <summary>
-    ///     重置敌人UI缓存
-    /// </summary>
-    private void ResetEnemyUICache()
-    {
-        lastEnemyName = "";
-        lastEnemyLevel = 0;
-        lastEnemyHP = 0;
-        lastEnemyMaxHP = 0;
-    }
-
-    /// <summary>
-    ///     玩家死亡事件处理
-    /// </summary>
-    private void OnPlayerDied()
-    {
-        ShowMessage("角色阵亡！准备复活...");
-
-        // 播放玩家死亡特效
-        if (characterNameText != null)
-        {
-            var originalColor = characterNameText.color;
-            characterNameText.DOColor(Color.red, 0.3f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.5f); });
-        }
-
-        // 角色血量条闪烁
-        if (hpSlider != null)
-        {
-            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
-            if (fillImage != null) fillImage.DOFade(0.3f, 0.5f).SetLoops(4, LoopType.Yoyo);
-        }
-    }
-
-    /// <summary>
-    ///     玩家复活事件处理
-    /// </summary>
-    private void OnPlayerRevived()
-    {
-        ShowMessage("角色复活！", 1.5f);
-
-        // 播放复活特效
-        if (characterNameText != null)
-        {
-            var originalColor = characterNameText.color;
-            characterNameText.DOColor(Color.green, 0.2f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.3f); });
-        }
-
-        // 血量条恢复动画
-        if (hpSlider != null)
-        {
-            hpSlider.DOValue(1f, 0.5f).SetEase(Ease.OutQuart);
-
-            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
-            if (fillImage != null) fillImage.DOFade(1f, 0.3f); // 恢复不透明度
-        }
-
-        // 角色面板发光效果
-        if (characterNameText != null) characterNameText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f);
-    }
-
-    /// <summary>
-    ///     战斗重启事件处理
-    /// </summary>
-    private void OnBattleRestarted()
-    {
-        ShowMessage("战斗重新开始！", 1.5f);
-
-        // 强制刷新所有UI
-        UpdateAllUI();
-    }
-
-
-    /// <summary>
-    ///     更新敌人名称
-    /// </summary>
-    private void UpdateEnemyName(string newName)
-    {
-        if (enemyNameText == null) return;
-
-        if (lastEnemyName != newName)
-        {
-            lastEnemyName = newName;
-            enemyNameText.text = newName;
-
-            // 名称变化动画
-            enemyNameText.transform.DOKill();
-            enemyNameText.transform.DOPunchScale(Vector3.one * 0.15f, 0.4f).SetEase(Ease.OutElastic);
-        }
-        else
-            enemyNameText.text = newName;
-    }
-
-    /// <summary>
-    ///     更新敌人等级
-    /// </summary>
-    private void UpdateEnemyLevel(int newLevel)
-    {
-        if (enemyLevelText == null) return;
-
-        if (lastEnemyLevel != newLevel)
-        {
-            lastEnemyLevel = newLevel;
-            enemyLevelText.text = $"Lv.{newLevel}";
-
-            // 等级变化闪烁动画
-            var originalColor = enemyLevelText.color;
-            enemyLevelText.DOColor(Color.yellow, 0.2f).OnComplete(() => { enemyLevelText.DOColor(originalColor, 0.3f); });
-        }
-        else
-            enemyLevelText.text = $"Lv.{newLevel}";
-    }
-
-    /// <summary>
-    ///     敌人血量条专用动画
-    /// </summary>
-    private void AnimateEnemySlider(Slider slider, float targetValue)
-    {
-        if (slider == null) return;
-
-        // 终止之前的动画
-        enemyHpAnimSequence?.Kill();
-
-        enemyHpAnimSequence = DOTween.Sequence();
-        enemyHpAnimSequence.Append(slider.DOValue(targetValue, animationDuration).SetEase(animationEase));
-
-        // 血量减少时的特殊效果
-        if (targetValue < slider.value)
-        {
-            var fillImage = slider.fillRect?.GetComponent<Image>();
-            if (fillImage != null)
-            {
-                var originalColor = fillImage.color;
-                enemyHpAnimSequence.Join(
-                    fillImage.DOColor(Color.white, 0.1f).OnComplete(() => { fillImage.DOColor(originalColor, 0.3f); })
-                );
-            }
-        }
-    }
-
-    /// <summary>
-    ///     强制刷新敌人UI
-    /// </summary>
-    public void ForceRefreshEnemyUI()
-    {
-        ResetEnemyUICache();
-        UpdateEnemyInfo();
-    }
-
-    private void OnBattleStarted(EnemyData enemy)
-    {
-        UpdateEnemyInfo();
-        ShowMessage($"开始战斗：{enemy.enemyName}！", 1.5f);
-    }
-
-    private void OnBattleEnded(bool victory, EnemyData enemy, float duration)
-    {
-        var resultText = victory ? "胜利" : "失败";
-        var message = $"战斗{resultText}！用时{duration:F1}秒";
-        ShowMessage(message);
-
-        // if (victory) PlayVictoryEffect();
-    }
-
-    private void OnEnemyHPChanged(EnemyData enemy)
-    {
-        if (enemy != null)
-        {
-            // 检查是否受伤
-            var wasDamaged = enemy.currentHP < lastEnemyHP && lastEnemyHP > 0;
-
-            UpdateEnemyHp(enemy.currentHP, enemy.maxHP);
-        }
-    }
-
-    private void OnDamageDealt(float damage, bool isPlayerAttack)
-    {
-        if (isPlayerAttack)
-        {
-            // 玩家攻击敌人特效
-            PlayDamageNumberEffect(damage, Color.yellow, enemyHpSlider?.transform);
-        }
-        else
-        {
-            // 敌人攻击玩家特效
-            PlayDamageNumberEffect(damage, Color.red, hpSlider?.transform);
-        }
-    }
-
-    private void OnEnemySpawned(EnemyData enemy)
-    {
-        ResetEnemyUICache();
-        UpdateEnemyInfo();
-        ShowMessage($"遭遇敌人：{enemy.enemyName}！", 1.5f);
-    }
-
-
-    /// <summary>
-    ///     播放伤害数字特效
-    /// </summary>
-    private void PlayDamageNumberEffect(float damage, Color color, Transform target)
-    {
-        if (target == null) return;
-
-        target.DOPunchScale(Vector3.one * 0.08f, 0.15f);
-
-        var targetImage = target.GetComponent<Image>();
-        if (targetImage != null)
-        {
-            var originalColor = targetImage.color;
-            targetImage.DOColor(color, 0.1f).OnComplete(() => { targetImage.DOColor(originalColor, 0.2f); });
-        }
-    }
-
-    /// <summary>
-    ///     更新血量显示
-    /// </summary>
-    private void UpdatePlayerHp(float currentHP, float maxHP)
-    {
-        if (hpSlider == null && hpText == null) return;
-
-        var hpChanged = !Mathf.Approximately(lastHP, currentHP) ||
-                        !Mathf.Approximately(lastMaxHP, maxHP);
+        var hpChanged = !Mathf.Approximately(_lastHp, currentHp) ||
+                        !Mathf.Approximately(_lastMaxHp, maxHp);
 
         if (!hpChanged) return;
 
-        lastHP = currentHP;
-        lastMaxHP = maxHP;
+        _lastHp = currentHp;
+        _lastMaxHp = maxHp;
 
-        // 更新血量条
-        if (hpSlider != null)
+        // Update slider
+        if (hpSlider)
         {
-            var targetValue = maxHP > 0 ? currentHP / maxHP : 0;
+            var targetValue = maxHp > 0 ? currentHp / maxHp : 0;
             AnimateSlider(hpSlider, targetValue, Color.red);
         }
 
-        // 更新血量文字
-        if (hpText != null) AnimateNumberText(hpText, $"{currentHP:F0}/{maxHP:F0}", Color.white);
+        // Update TMP text
+        if (hpText) AnimateNumberText(hpText, $"{currentHp:F0}/{maxHp:F0}", Color.white);
     }
 
-    private void UpdateEnemyHp(float currentHP, float maxHP)
-    {
-        var hpChanged = !Mathf.Approximately(lastEnemyHP, currentHP) ||
-                        !Mathf.Approximately(lastEnemyMaxHP, maxHP);
 
-        // 更新血量条
-        if (enemyHpSlider != null)
-        {
-            var targetValue = maxHP > 0 ? currentHP / maxHP : 0;
-
-            if (hpChanged)
-                AnimateEnemySlider(enemyHpSlider, targetValue);
-            else
-                enemyHpSlider.value = targetValue;
-        }
-
-        // 更新血量文字
-        if (enemyHpText != null)
-        {
-            var hpDisplayText = $"{currentHP:F0}/{maxHP:F0}";
-
-            if (hpChanged)
-                AnimateNumberText(enemyHpText, hpDisplayText, Color.white);
-            else
-                enemyHpText.text = hpDisplayText;
-        }
-
-        // 更新缓存
-        if (hpChanged)
-        {
-            lastEnemyHP = currentHP;
-            lastEnemyMaxHP = maxHP;
-        }
-    }
-
-    /// <summary>
-    ///     更新经验显示
-    /// </summary>
     private void UpdateExperience(CharacterData character)
     {
-        if (expSlider == null && expText == null) return;
+        if (!expSlider && !expText) return;
 
         var currentLevelExp = character.currentLevelExp;
         var expToNext = character.GetExpToNextLevel() - character.config.CalculateExpRequired(character.level);
         var expProgress = character.GetExpProgress();
 
-        var expChanged = lastExp != currentLevelExp || lastExpToNext != expToNext;
+        var expChanged = _lastExp != currentLevelExp || _lastExpToNext != expToNext;
 
         if (!expChanged) return;
 
-        lastExp = currentLevelExp;
-        lastExpToNext = expToNext;
+        _lastExp = currentLevelExp;
+        _lastExpToNext = expToNext;
 
-        // 更新经验条
-        if (expSlider != null) AnimateSlider(expSlider, expProgress, Color.blue);
+        // Update slider
+        if (expSlider) AnimateSlider(expSlider, expProgress, Color.blue);
 
-        // 更新经验文字
-        if (expText != null)
+        // Update TMP text
+        if (expText)
         {
-            var expText = expToNext > 0 ? $"{currentLevelExp}/{expToNext}" : $"{character.totalExperience}/MAX";
-            AnimateNumberText(this.expText, expText, Color.white);
+            var newText = expToNext > 0 ? $"{currentLevelExp}/{expToNext}" : $"{character.totalExperience}/MAX";
+            AnimateNumberText(expText, newText, Color.white);
         }
     }
 
-    /// <summary>
-    ///     更新金币显示
-    /// </summary>
     private void UpdateCoinDisplay()
     {
         if (coinText == null) return;
 
         var currentCoins = GameManager.Instance?.GetCoins() ?? 0;
 
-        if (lastCoinAmount != currentCoins)
+        if (_lastCoinAmount != currentCoins)
         {
-            AnimateNumberChange(coinText, lastCoinAmount, currentCoins, "");
-            lastCoinAmount = currentCoins;
+            AnimateNumberChange(coinText, _lastCoinAmount, currentCoins, "");
+            _lastCoinAmount = currentCoins;
         }
     }
 
+    #endregion
+
+    #region Route UI
+
+    private void UpdateRouteDisplay(RouteType newRoute)
+    {
+        if (GameManager.Instance?.playerData.selectedRoute != newRoute) return;
+
+        UpdateRouteDisplay();
+    }
+
     /// <summary>
-    ///     更新路线显示
+    ///     Update current route status
     /// </summary>
     private void UpdateRouteDisplay()
     {
@@ -722,12 +495,9 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void UpdateRouteDisplay(RouteType newRoute)
-    {
-        if (GameManager.Instance?.playerData.selectedRoute != newRoute) return;
+    #endregion
 
-        UpdateRouteDisplay();
-    }
+    #region Enemy UI
 
     private void UpdateEnemyInfo(EnemyData newEnemy)
     {
@@ -736,12 +506,147 @@ public class UIManager : MonoBehaviour
         UpdateEnemyInfo();
     }
 
-    #endregion
+    private void UpdateEnemyInfo()
+    {
+        var battleManager = GameManager.Instance?.battleManager;
+        var spireSystem = GameManager.Instance?.spireSystem;
+        var currentEnemy = battleManager?.GetCurrentEnemy();
 
-    #region 动画方法
+        // Check null
+        var shouldShowEnemy = currentEnemy != null && spireSystem?.currentRoute == RouteType.Battle;
+
+        if (!shouldShowEnemy)
+        {
+            ResetEnemyUICache();
+            return;
+        }
+
+        // Update enemy info elements
+        UpdateEnemyName(currentEnemy.enemyName);
+        UpdateEnemyLevel(currentEnemy.recommendedLevel);
+        UpdateEnemyHp(currentEnemy.currentHP, currentEnemy.maxHP);
+    }
+
+    private void UpdateEnemyHp(float currentHp, float maxHp)
+    {
+        var hpChanged = !Mathf.Approximately(_lastEnemyHp, currentHp) ||
+                        !Mathf.Approximately(_lastEnemyMaxHp, maxHp);
+
+        // HP bar
+        if (enemyHpSlider != null)
+        {
+            var targetValue = maxHp > 0 ? currentHp / maxHp : 0;
+
+            if (hpChanged)
+                AnimateEnemySlider(enemyHpSlider, targetValue);
+            else
+                enemyHpSlider.value = targetValue;
+        }
+
+        // Text
+        if (enemyHpText != null)
+        {
+            var hpDisplayText = $"{currentHp:F0}/{maxHp:F0}";
+
+            if (hpChanged)
+                AnimateNumberText(enemyHpText, hpDisplayText, Color.white);
+            else
+                enemyHpText.text = hpDisplayText;
+        }
+
+        // Cache
+        if (hpChanged)
+        {
+            _lastEnemyHp = currentHp;
+            _lastEnemyMaxHp = maxHp;
+        }
+    }
+
+    private void UpdateEnemyName(string newName)
+    {
+        if (enemyNameText == null) return;
+
+        if (_lastEnemyName != newName)
+        {
+            _lastEnemyName = newName;
+            enemyNameText.text = newName;
+
+            // 名称变化动画
+            enemyNameText.transform.DOKill();
+            enemyNameText.transform.DOPunchScale(Vector3.one * 0.15f, 0.4f).SetEase(Ease.OutElastic);
+        }
+        else
+            enemyNameText.text = newName;
+    }
+
+    private void UpdateEnemyLevel(int newLevel)
+    {
+        if (!enemyLevelText) return;
+
+        if (_lastEnemyLevel != newLevel)
+        {
+            _lastEnemyLevel = newLevel;
+            enemyLevelText.text = $"Lv.{newLevel}";
+
+            // 等级变化闪烁动画
+            var originalColor = enemyLevelText.color;
+            enemyLevelText.DOColor(Color.yellow, 0.2f).OnComplete(() => { enemyLevelText.DOColor(originalColor, 0.3f); });
+        }
+        else
+            enemyLevelText.text = $"Lv.{newLevel}";
+    }
+
+    private void AnimateEnemySlider(Slider slider, float targetValue)
+    {
+        if (!slider) return;
+
+        // 终止之前的动画
+        _enemyHpAnimSequence?.Kill();
+
+        _enemyHpAnimSequence = DOTween.Sequence();
+        _enemyHpAnimSequence.Append(slider.DOValue(targetValue, animationDuration).SetEase(animationEase));
+
+        // TODO: Temp animation
+        if (targetValue < slider.value)
+        {
+            var fillImage = slider.fillRect?.GetComponent<Image>();
+            if (fillImage)
+            {
+                var originalColor = fillImage.color;
+                _enemyHpAnimSequence.Join(
+                    fillImage.DOColor(Color.white, 0.1f).OnComplete(() => { fillImage.DOColor(originalColor, 0.3f); })
+                );
+            }
+        }
+    }
 
     /// <summary>
-    ///     滑动条动画
+    ///     Force to fresh if needed
+    /// </summary>
+    public void ForceRefreshEnemyUI()
+    {
+        ResetEnemyUICache();
+        UpdateEnemyInfo();
+    }
+
+
+    /// <summary>
+    ///     Reset enemy UI cache
+    /// </summary>
+    private void ResetEnemyUICache()
+    {
+        _lastEnemyName = "";
+        _lastEnemyLevel = 0;
+        _lastEnemyHp = 0;
+        _lastEnemyMaxHp = 0;
+    }
+
+    #endregion
+
+    #region Aniamtion Methods
+
+    /// <summary>
+    ///     Animate slider for player
     /// </summary>
     private void AnimateSlider(Slider slider, float targetValue, Color flashColor)
     {
@@ -757,7 +662,7 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     数字文字动画
+    ///     Animate for the scale
     /// </summary>
     private void AnimateNumberText(TextMeshProUGUI textComponent, string newText, Color flashColor)
     {
@@ -772,20 +677,20 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     数值变化动画（计数器效果）
+    ///     Animate counting effects
     /// </summary>
     private void AnimateNumberChange(TextMeshProUGUI textComponent, long fromValue, long toValue, string suffix)
     {
         if (textComponent == null) return;
 
-        // 终止之前的动画
-        coinAnimSequence?.Kill();
+        // Reset the sequence
+        _coinAnimSequence?.Kill();
         textComponent.transform.localScale = Vector3.one;
 
-        // 创建新的动画序列
-        coinAnimSequence = DOTween.Sequence();
+        // Create new sequence
+        _coinAnimSequence = DOTween.Sequence();
 
-        coinAnimSequence.Append(
+        _coinAnimSequence.Append(
             DOTween.To(() => fromValue,
                     x => textComponent.text = $"{x:N0}{suffix}",
                     toValue,
@@ -793,14 +698,14 @@ public class UIManager : MonoBehaviour
                 .SetEase(Ease.OutQuart)
         );
 
-        // 添加缩放效果
-        coinAnimSequence.Join(
+        // TODO: Temp effect
+        _coinAnimSequence.Join(
             textComponent.transform.DOPunchScale(Vector3.one * 0.1f, 0.3f)
         );
     }
 
     /// <summary>
-    ///     按钮点击动画
+    ///     Animate for button press
     /// </summary>
     private void AnimateButton(Button button)
     {
@@ -810,7 +715,7 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     路线切换动画
+    ///     Animate for route switch
     /// </summary>
     private void AnimateRouteSwitch()
     {
@@ -819,55 +724,48 @@ public class UIManager : MonoBehaviour
         if (currentRouteText != null) currentRouteText.transform.DOPunchScale(Vector3.one * 0.15f, 0.3f);
     }
 
-    /// <summary>
-    ///     升级特效动画
-    /// </summary>
     private void PlayLevelUpEffect()
     {
+        // TODO: Particle VFX
     }
 
-    /// <summary>
-    ///     金币获得特效
-    /// </summary>
     private void PlayCoinGainEffect()
     {
+        // TODO: Particle VFX
     }
 
-    /// <summary>
-    ///     经验获得特效
-    /// </summary>
     private void PlayExpGainEffect()
     {
+        // TODO: Particle VFX
     }
 
     #endregion
 
-    #region 事件处理
+    #region Action Handlers
 
     private void OnCharacterSwitched(CharacterData character)
     {
-        // 立即更新角色信息
         UpdateCharacterInfo();
 
-        // 播放切换动画
-        if (characterNameText != null) characterNameText.transform.DOPunchScale(Vector3.one * 0.3f, 0.5f);
+        // TODO: temp effect
+        if (characterNameText) characterNameText.transform.DOPunchScale(Vector3.one * 0.3f, 0.5f);
     }
 
     private void OnCharacterLevelUp(CharacterData character, int newLevel)
     {
-        // 播放升级特效
+        // VFX
         PlayLevelUpEffect();
 
-        // 更新UI
+        // Update UI
         UpdateCharacterInfo();
     }
 
     private void OnExperienceGained(CharacterData character, long expAmount)
     {
-        // 播放经验获得特效
+        // VFX
         PlayExpGainEffect();
 
-        // 更新经验显示
+        // Update UI
         UpdateExperience(character);
     }
 
@@ -875,21 +773,116 @@ public class UIManager : MonoBehaviour
     {
         if (newAmount > oldAmount)
         {
-            // 金币增加时播放特效
+            // VFX
             PlayCoinGainEffect();
         }
 
-        // 更新金币显示
+        // Update UI
         AnimateNumberChange(coinText, oldAmount, newAmount, "");
-        lastCoinAmount = newAmount;
+        _lastCoinAmount = newAmount;
+    }
+
+    private void OnEnemySpawned(EnemyData enemy)
+    {
+        ResetEnemyUICache();
+        UpdateEnemyInfo();
+        ShowMessage($"遭遇敌人：{enemy.enemyName}！", 1.5f);
+    }
+
+    private void OnBattleStarted(EnemyData enemy)
+    {
+        UpdateEnemyInfo();
+        ShowMessage($"开始战斗：{enemy.enemyName}！", 1.5f);
+    }
+
+    private void OnPlayerDied()
+    {
+        ShowMessage("角色阵亡！准备复活...");
+
+        // VFX
+        if (characterNameText != null)
+        {
+            var originalColor = characterNameText.color;
+            characterNameText.DOColor(Color.red, 0.3f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.5f); });
+        }
+
+        // Dying effect
+        if (hpSlider != null)
+        {
+            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
+            if (fillImage != null) fillImage.DOFade(0.3f, 0.5f).SetLoops(4, LoopType.Yoyo);
+        }
+    }
+
+    private void OnPlayerRevived()
+    {
+        ShowMessage("角色复活！", 1.5f);
+
+        // Revive VFX
+        if (characterNameText != null)
+        {
+            var originalColor = characterNameText.color;
+            characterNameText.DOColor(Color.green, 0.2f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.3f); });
+        }
+
+        // Reset the HP
+        if (hpSlider != null)
+        {
+            hpSlider.DOValue(1f, 0.5f).SetEase(Ease.OutQuart);
+
+            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
+            if (fillImage != null) fillImage.DOFade(1f, 0.3f); // 恢复不透明度
+        }
+    }
+
+    private void OnBattleRestarted()
+    {
+        ShowMessage("战斗重新开始！", 1.5f);
+
+        // 强制刷新所有UI
+        UpdateAllUI();
+    }
+
+    private void OnBattleEnded(bool victory, EnemyData enemy, float duration)
+    {
+        var resultText = victory ? "胜利" : "失败";
+        var message = $"战斗{resultText}！用时{duration:F1}秒";
+        ShowMessage(message);
+
+        // if (victory) PlayVictoryEffect();
+    }
+
+    private void OnEnemyHPChanged(EnemyData enemy)
+    {
+        if (enemy != null)
+        {
+            // Check HP
+            var wasDamaged = enemy.currentHP < _lastEnemyHp && _lastEnemyHp > 0;
+
+            UpdateEnemyHp(enemy.currentHP, enemy.maxHP);
+        }
+    }
+
+    private void OnDamageDealt(float damage, bool isPlayerAttack)
+    {
+        if (isPlayerAttack)
+        {
+            // VFX
+            PlayDamageNumberEffect(damage, Color.yellow, enemyHpSlider?.transform);
+        }
+        else
+        {
+            // VFX
+            PlayDamageNumberEffect(damage, Color.red, hpSlider?.transform);
+        }
     }
 
     #endregion
 
-    #region 公开方法
+    #region Public API
 
     /// <summary>
-    ///     强制更新UI（外部调用）
+    ///     Force to refresh all UI
     /// </summary>
     public void RefreshUI()
     {
@@ -897,58 +890,12 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     显示消息提示
+    ///     Message
     /// </summary>
     public void ShowMessage(string message, float duration = 2f)
     {
         // TODO: 实现消息提示UI
         Debug.Log($"[UI Message] {message}");
-    }
-
-    #endregion
-
-    #region 工具方法
-
-    private void Update()
-    {
-        // 定期更新UI（低频率）
-        if (Time.frameCount % 30 == 0) // 每0.5秒更新一次
-        {
-            UpdateCharacterInfo();
-            UpdateCoinDisplay();
-        }
-    }
-
-    private void KillAllAnimations()
-    {
-        coinAnimSequence?.Kill();
-        hpAnimSequence?.Kill();
-        expAnimSequence?.Kill();
-
-        DOTween.Kill(this);
-    }
-
-    #endregion
-
-    #region 调试方法
-
-    [ContextMenu("测试升级动画")]
-    public void TestLevelUpAnimation()
-    {
-        PlayLevelUpEffect();
-    }
-
-    [ContextMenu("测试金币动画")]
-    public void TestCoinAnimation()
-    {
-        AnimateNumberChange(coinText, lastCoinAmount, lastCoinAmount + 1000, "");
-        PlayCoinGainEffect();
-    }
-
-    [ContextMenu("测试经验动画")]
-    public void TestExpAnimation()
-    {
-        PlayExpGainEffect();
     }
 
     #endregion

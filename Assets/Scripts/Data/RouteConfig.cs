@@ -8,16 +8,16 @@ namespace IdleGame.Gameplay
     [CreateAssetMenu(fileName = "RouteConfig", menuName = "IdleGame/Route Config")]
     public class RouteConfig : ScriptableObject
     {
-        [Header("基础信息")]
-        public string routeName = "路线";
-        public string routeDescription = "路线描述";
+        [Header("Basic Information")]
+        public string routeName = "RouteName";
+        public string routeDescription = "RouteDescription";
 
-        [Header("收益设置")]
-        public float intervalTime = 1f; // 收益间隔时间(秒)
+        [Header("Reward Settings")]
+        public float intervalTime = 1f; // 收益间隔时间 (seconds)
         public long coinReward; // 金币收益
         public long expReward; // 经验收益
 
-        [Header("特殊设置")]
+        [Header("Special Settings (TODO)")]
         public bool isActive = true; // 是否激活
         public float efficiencyMultiplier = 1f; // 效率倍率
 

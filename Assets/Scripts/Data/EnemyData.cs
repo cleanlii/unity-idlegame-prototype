@@ -7,13 +7,13 @@ namespace IdleGame.Gameplay.Battle
     [Serializable]
     public class EnemyData
     {
-        [Header("基础信息")]
+        [Header("Basic Information")]
         public string enemyID; // 敌人唯一ID
         public string enemyName; // 敌人名称
         public EnemyType enemyType; // 敌人类型
         public int recommendedLevel; // 推荐等级
 
-        [Header("战斗属性")]
+        [Header("Battle Attributes")]
         public float maxHP = 80f; // 最大生命值
         public float currentHP = 80f; // 当前生命值
         public float attackPower = 15f; // 攻击力
@@ -21,17 +21,17 @@ namespace IdleGame.Gameplay.Battle
         public float attackSpeed = 1f; // 攻击速度
         public float criticalRate = 0.05f; // 暴击率
 
-        [Header("奖励设置")]
+        [Header("Reward Settings")]
         public int baseExpReward = 50; // 基础经验奖励
         public int baseCoinReward = 30; // 基础金币奖励
         public float rewardMultiplier = 1f; // 奖励倍率
 
-        [Header("特殊属性")]
+        [Header("Skill Settings (TODO)")]
         public bool hasSpecialAbility; // 是否有特殊技能
         public string specialAbilityName = ""; // 特殊技能名称
         public float specialAbilityChance = 0.2f; // 特殊技能触发概率
 
-        [Header("外观设置")]
+        [Header("Appearance (TODO)")]
         public Color enemyColor = Color.red; // 敌人颜色
         public float sizeScale = 1f; // 大小缩放
 
@@ -89,7 +89,7 @@ namespace IdleGame.Gameplay.Battle
                     defense *= 1.2f;
                     rewardMultiplier = 1.5f;
                     hasSpecialAbility = true;
-                    specialAbilityName = "精英强化";
+                    specialAbilityName = "Elite Buff";
                     break;
                 case EnemyType.Boss:
                     maxHP *= 2.5f;
@@ -97,7 +97,7 @@ namespace IdleGame.Gameplay.Battle
                     defense *= 1.5f;
                     rewardMultiplier = 3f;
                     hasSpecialAbility = true;
-                    specialAbilityName = "Boss技能";
+                    specialAbilityName = "Boos Skill";
                     sizeScale = 1.5f;
                     break;
                 case EnemyType.Special:
@@ -106,7 +106,7 @@ namespace IdleGame.Gameplay.Battle
                     defense *= 0.5f;
                     rewardMultiplier = 2f;
                     hasSpecialAbility = true;
-                    specialAbilityName = "特殊能力";
+                    specialAbilityName = "Special Ability";
                     break;
             }
         }
