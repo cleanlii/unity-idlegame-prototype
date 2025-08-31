@@ -5,7 +5,7 @@
 
 A Unity-based idle RPG prototype where players automatically grow through different routes, manage characters, and progress through a loop idle systems.
 
-![ScreenShot1](Screenshots/s1.png)
+![ScreenShot1](Screenshots/s1.jpg)
 
 ## Core Concept
 
@@ -182,8 +182,8 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
 - **LubanConfig (TODO)**: External spreadsheet-to-data pipeline for scalable content editing
 
 ### **Testing Editor Tools**
-![ScreenShot2](Screenshots/s2.png)
-![ScreenShot3](Screenshots/s3.png)
+![ScreenShot2](Screenshots/s2.jpg)
+![ScreenShot3](Screenshots/s3.jpg)
 - **CharacterDataEditor**: A useful tool for quick build and test (gacha, upgrading, etc.)
 
 ### **Future Plan**
