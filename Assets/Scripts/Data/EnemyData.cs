@@ -1,7 +1,10 @@
+using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace IdleGame.Gameplay.Battle
 {
+    [Serializable]
     public class EnemyData
     {
         [Header("基础信息")]

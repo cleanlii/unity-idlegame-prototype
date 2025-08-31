@@ -2,6 +2,7 @@ using System.Collections;
 using DG.Tweening;
 using IdleGame.Character;
 using IdleGame.Gameplay;
+using IdleGame.Gameplay.Battle;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +25,6 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI enemyLevelText;
     [SerializeField] private Slider enemyHpSlider;
     [SerializeField] private TextMeshProUGUI enemyHpText;
-    [SerializeField] private GameObject enemyInfoPanel;
 
     [Header("功能按钮")]
     [SerializeField] private Button getCoinButton;
@@ -60,10 +60,18 @@ public class UIManager : MonoBehaviour
     private int lastLevel;
     private string lastCharacterName = "";
 
+    // 敌人相关缓存
+    private string lastEnemyName = "";
+    private int lastEnemyLevel;
+    private float lastEnemyHP;
+    private float lastEnemyMaxHP;
+    private bool lastBattleActiveState;
+
     // 动画序列
     private Sequence coinAnimSequence;
     private Sequence hpAnimSequence;
     private Sequence expAnimSequence;
+    private Sequence enemyHpAnimSequence;
 
     public static UIManager Instance
     {
@@ -206,7 +214,22 @@ public class UIManager : MonoBehaviour
                 gameManager.characterSystem.OnExperienceGained += OnExperienceGained;
             }
 
-            if (gameManager.uiManager != null) gameManager.spireSystem.OnRouteChanged += UpdateRouteDisplay;
+            if (gameManager.spireSystem != null)
+            {
+                gameManager.spireSystem.OnRouteChanged += UpdateRouteDisplay;
+                gameManager.spireSystem.OnEnemySpawned += UpdateEnemyInfo;
+            }
+
+            if (gameManager.battleManager != null)
+            {
+                gameManager.battleManager.OnEnemyHPChanged += OnEnemyHPChanged;
+                gameManager.battleManager.OnDamageDealt += OnDamageDealt;
+                gameManager.battleManager.OnBattleStarted += OnBattleStarted;
+                gameManager.battleManager.OnBattleEnded += OnBattleEnded;
+                gameManager.battleManager.OnBattleRestarted += OnBattleRestarted;
+                gameManager.battleManager.OnPlayerDied += OnPlayerDied;
+                gameManager.battleManager.OnPlayerRevived += OnPlayerRevived;
+            }
         }
     }
 
@@ -225,6 +248,16 @@ public class UIManager : MonoBehaviour
             }
 
             if (gameManager.uiManager != null) gameManager.spireSystem.OnRouteChanged -= UpdateRouteDisplay;
+
+            if (gameManager.battleManager != null)
+            {
+                gameManager.battleManager.OnDamageDealt -= OnDamageDealt;
+                gameManager.battleManager.OnBattleStarted -= OnBattleStarted;
+                gameManager.battleManager.OnBattleEnded -= OnBattleEnded;
+                gameManager.battleManager.OnBattleRestarted -= OnBattleRestarted;
+                gameManager.battleManager.OnPlayerDied -= OnPlayerDied;
+                gameManager.battleManager.OnPlayerRevived -= OnPlayerRevived;
+            }
         }
     }
 
@@ -238,6 +271,7 @@ public class UIManager : MonoBehaviour
     public void UpdateAllUI()
     {
         UpdateCharacterInfo();
+        UpdateEnemyInfo();
         UpdateCoinDisplay();
         UpdateRouteDisplay();
     }
@@ -265,7 +299,7 @@ public class UIManager : MonoBehaviour
         UpdateLevel(character.level);
 
         // 更新血量
-        UpdateHP(character.currentHP, character.GetMaxHP());
+        UpdatePlayerHp(character.currentHP, character.GetMaxHP());
 
         // 更新经验
         UpdateExperience(character);
@@ -312,10 +346,245 @@ public class UIManager : MonoBehaviour
         characterLevelText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f);
     }
 
+    private void UpdateEnemyInfo()
+    {
+        var battleManager = GameManager.Instance?.battleManager;
+        var spireSystem = GameManager.Instance?.spireSystem;
+        var currentEnemy = battleManager?.GetCurrentEnemy();
+
+        // 检查是否应该显示敌人信息
+        var shouldShowEnemy = currentEnemy != null && spireSystem?.currentRoute == RouteType.Battle;
+
+        if (!shouldShowEnemy)
+        {
+            ResetEnemyUICache();
+            return;
+        }
+
+        // 显示并更新敌人信息
+        UpdateEnemyName(currentEnemy.enemyName);
+        UpdateEnemyLevel(currentEnemy.recommendedLevel);
+        UpdateEnemyHp(currentEnemy.currentHP, currentEnemy.maxHP);
+    }
+
+
+    /// <summary>
+    ///     重置敌人UI缓存
+    /// </summary>
+    private void ResetEnemyUICache()
+    {
+        lastEnemyName = "";
+        lastEnemyLevel = 0;
+        lastEnemyHP = 0;
+        lastEnemyMaxHP = 0;
+    }
+
+    /// <summary>
+    ///     玩家死亡事件处理
+    /// </summary>
+    private void OnPlayerDied()
+    {
+        ShowMessage("角色阵亡！准备复活...");
+
+        // 播放玩家死亡特效
+        if (characterNameText != null)
+        {
+            var originalColor = characterNameText.color;
+            characterNameText.DOColor(Color.red, 0.3f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.5f); });
+        }
+
+        // 角色血量条闪烁
+        if (hpSlider != null)
+        {
+            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
+            if (fillImage != null) fillImage.DOFade(0.3f, 0.5f).SetLoops(4, LoopType.Yoyo);
+        }
+    }
+
+    /// <summary>
+    ///     玩家复活事件处理
+    /// </summary>
+    private void OnPlayerRevived()
+    {
+        ShowMessage("角色复活！", 1.5f);
+
+        // 播放复活特效
+        if (characterNameText != null)
+        {
+            var originalColor = characterNameText.color;
+            characterNameText.DOColor(Color.green, 0.2f).OnComplete(() => { characterNameText.DOColor(originalColor, 0.3f); });
+        }
+
+        // 血量条恢复动画
+        if (hpSlider != null)
+        {
+            hpSlider.DOValue(1f, 0.5f).SetEase(Ease.OutQuart);
+
+            var fillImage = hpSlider.fillRect?.GetComponent<Image>();
+            if (fillImage != null) fillImage.DOFade(1f, 0.3f); // 恢复不透明度
+        }
+
+        // 角色面板发光效果
+        if (characterNameText != null) characterNameText.transform.DOPunchScale(Vector3.one * 0.2f, 0.5f);
+    }
+
+    /// <summary>
+    ///     战斗重启事件处理
+    /// </summary>
+    private void OnBattleRestarted()
+    {
+        ShowMessage("战斗重新开始！", 1.5f);
+
+        // 强制刷新所有UI
+        UpdateAllUI();
+    }
+
+
+    /// <summary>
+    ///     更新敌人名称
+    /// </summary>
+    private void UpdateEnemyName(string newName)
+    {
+        if (enemyNameText == null) return;
+
+        if (lastEnemyName != newName)
+        {
+            lastEnemyName = newName;
+            enemyNameText.text = newName;
+
+            // 名称变化动画
+            enemyNameText.transform.DOKill();
+            enemyNameText.transform.DOPunchScale(Vector3.one * 0.15f, 0.4f).SetEase(Ease.OutElastic);
+        }
+        else
+            enemyNameText.text = newName;
+    }
+
+    /// <summary>
+    ///     更新敌人等级
+    /// </summary>
+    private void UpdateEnemyLevel(int newLevel)
+    {
+        if (enemyLevelText == null) return;
+
+        if (lastEnemyLevel != newLevel)
+        {
+            lastEnemyLevel = newLevel;
+            enemyLevelText.text = $"Lv.{newLevel}";
+
+            // 等级变化闪烁动画
+            var originalColor = enemyLevelText.color;
+            enemyLevelText.DOColor(Color.yellow, 0.2f).OnComplete(() => { enemyLevelText.DOColor(originalColor, 0.3f); });
+        }
+        else
+            enemyLevelText.text = $"Lv.{newLevel}";
+    }
+
+    /// <summary>
+    ///     敌人血量条专用动画
+    /// </summary>
+    private void AnimateEnemySlider(Slider slider, float targetValue)
+    {
+        if (slider == null) return;
+
+        // 终止之前的动画
+        enemyHpAnimSequence?.Kill();
+
+        enemyHpAnimSequence = DOTween.Sequence();
+        enemyHpAnimSequence.Append(slider.DOValue(targetValue, animationDuration).SetEase(animationEase));
+
+        // 血量减少时的特殊效果
+        if (targetValue < slider.value)
+        {
+            var fillImage = slider.fillRect?.GetComponent<Image>();
+            if (fillImage != null)
+            {
+                var originalColor = fillImage.color;
+                enemyHpAnimSequence.Join(
+                    fillImage.DOColor(Color.white, 0.1f).OnComplete(() => { fillImage.DOColor(originalColor, 0.3f); })
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    ///     强制刷新敌人UI
+    /// </summary>
+    public void ForceRefreshEnemyUI()
+    {
+        ResetEnemyUICache();
+        UpdateEnemyInfo();
+    }
+
+    private void OnBattleStarted(EnemyData enemy)
+    {
+        UpdateEnemyInfo();
+        ShowMessage($"开始战斗：{enemy.enemyName}！", 1.5f);
+    }
+
+    private void OnBattleEnded(bool victory, EnemyData enemy, float duration)
+    {
+        var resultText = victory ? "胜利" : "失败";
+        var message = $"战斗{resultText}！用时{duration:F1}秒";
+        ShowMessage(message);
+
+        // if (victory) PlayVictoryEffect();
+    }
+
+    private void OnEnemyHPChanged(EnemyData enemy)
+    {
+        if (enemy != null)
+        {
+            // 检查是否受伤
+            var wasDamaged = enemy.currentHP < lastEnemyHP && lastEnemyHP > 0;
+
+            UpdateEnemyHp(enemy.currentHP, enemy.maxHP);
+        }
+    }
+
+    private void OnDamageDealt(float damage, bool isPlayerAttack)
+    {
+        if (isPlayerAttack)
+        {
+            // 玩家攻击敌人特效
+            PlayDamageNumberEffect(damage, Color.yellow, enemyHpSlider?.transform);
+        }
+        else
+        {
+            // 敌人攻击玩家特效
+            PlayDamageNumberEffect(damage, Color.red, hpSlider?.transform);
+        }
+    }
+
+    private void OnEnemySpawned(EnemyData enemy)
+    {
+        ResetEnemyUICache();
+        UpdateEnemyInfo();
+        ShowMessage($"遭遇敌人：{enemy.enemyName}！", 1.5f);
+    }
+
+
+    /// <summary>
+    ///     播放伤害数字特效
+    /// </summary>
+    private void PlayDamageNumberEffect(float damage, Color color, Transform target)
+    {
+        if (target == null) return;
+
+        target.DOPunchScale(Vector3.one * 0.08f, 0.15f);
+
+        var targetImage = target.GetComponent<Image>();
+        if (targetImage != null)
+        {
+            var originalColor = targetImage.color;
+            targetImage.DOColor(color, 0.1f).OnComplete(() => { targetImage.DOColor(originalColor, 0.2f); });
+        }
+    }
+
     /// <summary>
     ///     更新血量显示
     /// </summary>
-    private void UpdateHP(float currentHP, float maxHP)
+    private void UpdatePlayerHp(float currentHP, float maxHP)
     {
         if (hpSlider == null && hpText == null) return;
 
@@ -335,7 +604,42 @@ public class UIManager : MonoBehaviour
         }
 
         // 更新血量文字
-        if (hpText != null) AnimateNumberText(hpText, $"{currentHP:F0}/{maxHP:F0}", Color.red);
+        if (hpText != null) AnimateNumberText(hpText, $"{currentHP:F0}/{maxHP:F0}", Color.white);
+    }
+
+    private void UpdateEnemyHp(float currentHP, float maxHP)
+    {
+        var hpChanged = !Mathf.Approximately(lastEnemyHP, currentHP) ||
+                        !Mathf.Approximately(lastEnemyMaxHP, maxHP);
+
+        // 更新血量条
+        if (enemyHpSlider != null)
+        {
+            var targetValue = maxHP > 0 ? currentHP / maxHP : 0;
+
+            if (hpChanged)
+                AnimateEnemySlider(enemyHpSlider, targetValue);
+            else
+                enemyHpSlider.value = targetValue;
+        }
+
+        // 更新血量文字
+        if (enemyHpText != null)
+        {
+            var hpDisplayText = $"{currentHP:F0}/{maxHP:F0}";
+
+            if (hpChanged)
+                AnimateNumberText(enemyHpText, hpDisplayText, Color.white);
+            else
+                enemyHpText.text = hpDisplayText;
+        }
+
+        // 更新缓存
+        if (hpChanged)
+        {
+            lastEnemyHP = currentHP;
+            lastEnemyMaxHP = maxHP;
+        }
     }
 
     /// <summary>
@@ -363,7 +667,7 @@ public class UIManager : MonoBehaviour
         if (expText != null)
         {
             var expText = expToNext > 0 ? $"{currentLevelExp}/{expToNext}" : $"{character.totalExperience}/MAX";
-            AnimateNumberText(this.expText, expText, Color.blue);
+            AnimateNumberText(this.expText, expText, Color.white);
         }
     }
 
@@ -423,6 +727,13 @@ public class UIManager : MonoBehaviour
         if (GameManager.Instance?.playerData.selectedRoute != newRoute) return;
 
         UpdateRouteDisplay();
+    }
+
+    private void UpdateEnemyInfo(EnemyData newEnemy)
+    {
+        if (GameManager.Instance?.spireSystem.currentEnemy != newEnemy) return;
+
+        UpdateEnemyInfo();
     }
 
     #endregion

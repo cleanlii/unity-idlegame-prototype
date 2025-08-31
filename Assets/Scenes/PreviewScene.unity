@@ -527,6 +527,25 @@ MonoBehaviour:
   victoryDelay: 1
   defeatDelay: 2
   isBattleActive: 0
+  currentEnemy:
+    enemyID: 
+    enemyName: 
+    enemyType: 0
+    recommendedLevel: 0
+    maxHP: 80
+    currentHP: 80
+    attackPower: 15
+    defense: 8
+    attackSpeed: 1
+    criticalRate: 0.05
+    baseExpReward: 50
+    baseCoinReward: 30
+    rewardMultiplier: 1
+    hasSpecialAbility: 0
+    specialAbilityName: 
+    specialAbilityChance: 0.2
+    enemyColor: {r: 1, g: 0, b: 0, a: 1}
+    sizeScale: 1
   battleTimer: 0
   consecutiveWins: 0
   totalBattlesThisSession: 0
@@ -597,6 +616,25 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 34bb500ec0cdf754f88a43fb065c2791, type: 2}
   - {fileID: 11400000, guid: ff416d55d87bc2d41a11794f139161ef, type: 2}
   currentRoute: 0
+  currentEnemy:
+    enemyID: 
+    enemyName: 
+    enemyType: 0
+    recommendedLevel: 0
+    maxHP: 80
+    currentHP: 80
+    attackPower: 15
+    defense: 8
+    attackSpeed: 1
+    criticalRate: 0.05
+    baseExpReward: 50
+    baseCoinReward: 30
+    rewardMultiplier: 1
+    hasSpecialAbility: 0
+    specialAbilityName: 
+    specialAbilityChance: 0.2
+    enemyColor: {r: 1, g: 0, b: 0, a: 1}
+    sizeScale: 1
   isBattleActive: 0
   routeTimer: 0
   showDebugInfo: 1

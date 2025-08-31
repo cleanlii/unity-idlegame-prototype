@@ -38,6 +38,7 @@ namespace IdleGame.Gameplay
         private GameManager gameManager;
         private CharacterSystem characterSystem;
         private IdleLogSystem logSystem;
+        private BattleManager battleManager;
 
         // 协程引用
         private Coroutine routeCoroutine;
@@ -68,8 +69,7 @@ namespace IdleGame.Gameplay
             characterSystem = ServiceLocator.Get<CharacterSystem>();
             logSystem = ServiceLocator.Get<IdleLogSystem>();
 
-            // 初始化战斗管理器
-            InitializeBattleManager();
+            battleManager = ServiceLocator.Get<BattleManager>();
 
             // 验证配置
             ValidateConfigs();
@@ -134,11 +134,10 @@ namespace IdleGame.Gameplay
             routeTimer = 0f;
 
             // 如果从战斗线切换，停止战斗
-            if (oldRoute == RouteType.Battle && isBattleActive)
+            if (oldRoute == RouteType.Battle)
             {
-                StopBattle();
+                battleManager.RefreshBattle();
                 LogMessage("战斗被中断，敌人重新生成");
-                SpawnNextEnemy(); // 重新生成敌人
             }
 
             // 启动新路线
@@ -186,7 +185,7 @@ namespace IdleGame.Gameplay
         #region 路线协程实现
 
         /// <summary>
-        ///     战斗线协程：管理战斗状态和敌人生成
+        ///     战斗线协程：只负责流程控制，具体战斗交给BattleManager
         /// </summary>
         private IEnumerator BattleRouteCoroutine()
         {
@@ -194,20 +193,41 @@ namespace IdleGame.Gameplay
 
             while (currentRoute == RouteType.Battle)
             {
-                // 如果角色已死亡，等待复活或处理
-                if (characterSystem.currentCharacter.IsDead())
+                // 检查是否有可用角色
+                if (characterSystem.currentCharacter.IsNull)
                 {
-                    LogMessage("角色已阵亡，等待复活...");
-                    characterSystem.RestoreHP();
-                    yield return new WaitForSeconds(battleRouteConfig.intervalTime);
+                    LogMessage("无可用角色，等待角色设置...");
+                    yield return new WaitForSeconds(1f);
                     continue;
                 }
 
                 // 如果没有敌人，生成新敌人
-                if (currentEnemy == null) SpawnNextEnemy();
+                if (currentEnemy == null)
+                {
+                    SpawnNextEnemy();
+                    yield return new WaitForSeconds(0.5f); // 给敌人生成一点时间
+                    continue;
+                }
 
-                // 如果不在战斗中，开始战斗
-                if (!isBattleActive && currentEnemy != null) StartBattle();
+                // 检查BattleManager是否可以开始战斗
+                if (battleManager != null && battleManager.CanStartBattle())
+                {
+                    // 委托给BattleManager执行具体战斗
+                    battleManager.StartBattle(currentEnemy);
+
+                    // 等待战斗结束
+                    while (battleManager.isBattleActive)
+                    {
+                        yield return null; // 等待BattleManager完成战斗
+                    }
+
+                    // 战斗结束后的处理在OnBattleEnded事件中进行
+                }
+                else
+                {
+                    // 如果无法开始战斗，等待一段时间后重试
+                    yield return new WaitForSeconds(battleRouteConfig.intervalTime);
+                }
 
                 routeTimer += Time.deltaTime;
                 yield return null;
@@ -266,74 +286,6 @@ namespace IdleGame.Gameplay
 
                 yield return null;
             }
-        }
-
-        #endregion
-
-        #region 战斗系统集成
-
-        // 战斗管理器引用
-        private BattleManager battleManager;
-
-        /// <summary>
-        ///     初始化战斗管理器引用
-        /// </summary>
-        private void InitializeBattleManager()
-        {
-            battleManager = ServiceLocator.Get<BattleManager>();
-            if (battleManager == null)
-                battleManager = FindObjectOfType<BattleManager>();
-
-            if (battleManager != null)
-            {
-                // 订阅战斗事件
-                battleManager.OnBattleEnded += OnBattleEnded;
-            }
-        }
-
-        /// <summary>
-        ///     开始战斗 (通过BattleManager)
-        /// </summary>
-        private void StartBattle()
-        {
-            if (battleManager == null || currentEnemy == null) return;
-
-            battleManager.StartBattle(currentEnemy);
-            isBattleActive = true;
-        }
-
-        /// <summary>
-        ///     停止战斗 (通过BattleManager)
-        /// </summary>
-        private void StopBattle()
-        {
-            if (battleManager == null) return;
-
-            battleManager.StopBattle();
-            isBattleActive = false;
-        }
-
-        /// <summary>
-        ///     战斗结束事件处理
-        /// </summary>
-        private void OnBattleEnded(bool victory, EnemyData enemy, float duration)
-        {
-            isBattleActive = false;
-
-            if (victory)
-            {
-                LogMessage($"战斗胜利！用时{duration:F1}秒");
-                // 生成下一个敌人
-                SpawnNextEnemy();
-            }
-            else
-            {
-                LogMessage($"战斗失败！用时{duration:F1}秒");
-                // 保持当前敌人以供重新挑战
-            }
-
-            // 触发战斗完成事件
-            OnBattleCompleted?.Invoke(victory, enemy);
         }
 
         #endregion

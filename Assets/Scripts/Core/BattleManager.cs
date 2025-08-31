@@ -8,7 +8,10 @@ namespace IdleGame.Gameplay.Battle
 {
     public class BattleManager : MonoBehaviour
     {
-        [Header("战斗设置")]
+        [Header("复活设置")]
+        [SerializeField] private float reviveDelay = 2f; // 复活延迟时间
+        [SerializeField] private bool autoReviveEnabled = true; // 是否启用自动复活
+        [SerializeField] private float battleRestartDelay = 1f; // 战斗重启延迟
         [SerializeField] private float baseAttackInterval = 1f; // 基础攻击间隔
         [SerializeField] private float battleStartDelay = 0.5f; // 战斗开始延迟
         [SerializeField] private float victoryDelay = 1f; // 胜利后延迟
@@ -39,6 +42,7 @@ namespace IdleGame.Gameplay.Battle
         public Action<EnemyData> OnEnemyHPChanged;
         public Action OnPlayerDied;
         public Action OnPlayerRevived;
+        public Action OnBattleRestarted; // 新增：战斗重启事件
 
         private void Start()
         {
@@ -272,7 +276,7 @@ namespace IdleGame.Gameplay.Battle
         }
 
         /// <summary>
-        ///     战斗失败处理
+        ///     战斗失败处理 - 修改为刷新战斗
         /// </summary>
         private void OnBattleDefeat(float battleStartTime)
         {
@@ -286,66 +290,193 @@ namespace IdleGame.Gameplay.Battle
             // 记录角色战斗统计（无奖励）
             characterSystem.RecordBattleResult(false, 0);
 
-            LogMessage($"战斗失败！用时 {battleDuration:F1}秒，无奖励");
+            LogMessage($"战斗失败！用时 {battleDuration:F1}秒");
 
             // 触发战斗结束事件
             OnBattleEnded?.Invoke(false, currentEnemy, battleDuration);
 
-            // 敌人恢复满血以备下次战斗
-            currentEnemy.ResetHP();
-            OnEnemyHPChanged?.Invoke(currentEnemy);
-        }
-
-        #endregion
-
-        #region 角色管理
-
-        /// <summary>
-        ///     复活玩家
-        /// </summary>
-        private void RevivePlayer()
-        {
-            characterSystem.RestoreHP();
-            OnPlayerRevived?.Invoke();
-            LogMessage("角色已复活！");
-        }
-
-        /// <summary>
-        ///     角色死亡事件处理
-        /// </summary>
-        private void OnCharacterDied(CharacterData character)
-        {
-            OnPlayerDied?.Invoke();
-
-            // 如果正在战斗，停止战斗
-            if (isBattleActive) StopBattle();
-        }
-
-        /// <summary>
-        ///     角色切换事件处理
-        /// </summary>
-        private void OnCharacterSwitched(CharacterData newCharacter)
-        {
-            // 如果正在战斗，停止当前战斗
-            if (isBattleActive)
+            // 启动战斗刷新流程
+            if (autoReviveEnabled)
+                StartCoroutine(BattleRefreshCoroutine());
+            else
             {
-                StopBattle();
-                LogMessage("角色切换，当前战斗被中断");
+                // 如果不自动复活，敌人恢复满血等待手动复活
+                currentEnemy.ResetHP();
+                OnEnemyHPChanged?.Invoke(currentEnemy);
             }
         }
 
         #endregion
 
-        #region 公开接口
+        #region 战斗刷新系统
+
+        /// <summary>
+        ///     战斗刷新协程 - 玩家死亡后的完整刷新流程
+        /// </summary>
+        private IEnumerator BattleRefreshCoroutine()
+        {
+            LogMessage("开始战斗刷新流程...");
+
+            // 1. 复活玩家
+            yield return new WaitForSeconds(reviveDelay);
+            RevivePlayer();
+
+            // 2. 敌人也恢复满血
+            if (currentEnemy != null)
+            {
+                currentEnemy.ResetHP();
+                OnEnemyHPChanged?.Invoke(currentEnemy);
+                LogMessage($"{currentEnemy.enemyName} 血量已重置");
+            }
+
+            // 3. 等待一段时间后重新开始战斗
+            yield return new WaitForSeconds(battleRestartDelay);
+
+            // 4. 重新开始战斗
+            if (CanStartBattle())
+            {
+                LogMessage("战斗重新开始！");
+                OnBattleRestarted?.Invoke();
+
+                // 重新启动战斗
+                isBattleActive = true;
+                battleCoroutine = StartCoroutine(BattleCoroutine());
+            }
+        }
+
+        /// <summary>
+        ///     手动刷新战斗 - 外部调用接口
+        /// </summary>
+        public void ManualRefreshBattle()
+        {
+            if (!isBattleActive) return;
+
+            LogMessage("手动刷新战斗");
+
+            // 停止当前战斗
+            StopBattle();
+
+            // 启动刷新流程
+            StartCoroutine(BattleRefreshCoroutine());
+        }
+
+        #endregion
+
+        #region 角色管理 - 修改复活逻辑
+
+        /// <summary>
+        ///     复活玩家 - 增强版
+        /// </summary>
+        private void RevivePlayer()
+        {
+            if (!characterSystem.currentCharacter.IsNull)
+            {
+                characterSystem.RestoreHP();
+                OnPlayerRevived?.Invoke();
+                LogMessage($"{characterSystem.currentCharacter.config.characterName} 已复活！血量已恢复");
+            }
+        }
+
+        /// <summary>
+        ///     角色死亡事件处理 - 修改为触发战斗刷新
+        /// </summary>
+        private void OnCharacterDied(CharacterData character)
+        {
+            OnPlayerDied?.Invoke();
+            LogMessage($"{character.config.characterName} 阵亡！");
+
+            // 不立即停止战斗，让OnBattleDefeat处理刷新逻辑
+        }
+
+        /// <summary>
+        ///     角色切换事件处理 - 修改为保持战斗状态
+        /// </summary>
+        private void OnCharacterSwitched(CharacterData newCharacter)
+        {
+            LogMessage($"角色切换至: {newCharacter.config.characterName}");
+
+            // 角色切换时，如果在战斗中，刷新战斗而不是停止
+            if (isBattleActive)
+            {
+                LogMessage("角色切换，刷新当前战斗");
+                StartCoroutine(BattleRefreshCoroutine());
+            }
+        }
+
+        #endregion
+
+        #region 公开接口 - 新增刷新相关方法
 
         /// <summary>
         ///     检查是否可以开始战斗
         /// </summary>
         public bool CanStartBattle()
         {
-            return !isBattleActive &&
+            return gameManager.spireSystem.currentRoute == RouteType.Battle && !isBattleActive &&
                    !characterSystem.currentCharacter.IsNull &&
-                   !characterSystem.currentCharacter.IsDead();
+                   !characterSystem.currentCharacter.IsDead() &&
+                   currentEnemy != null;
+        }
+
+        /// <summary>
+        ///     立即刷新战斗 - 外部调用
+        /// </summary>
+        public void RefreshBattle()
+        {
+            if (currentEnemy == null) return;
+
+            LogMessage("外部请求刷新战斗");
+
+            // 停止当前战斗
+            if (isBattleActive) StopBattle();
+
+            // 启动刷新流程
+            StartCoroutine(QuickBattleRefreshCoroutine());
+        }
+
+        /// <summary>
+        ///     快速战斗刷新 - 无延迟版本
+        /// </summary>
+        private IEnumerator QuickBattleRefreshCoroutine()
+        {
+            // 立即复活玩家
+            RevivePlayer();
+
+            // 敌人恢复满血
+            if (currentEnemy != null)
+            {
+                currentEnemy.ResetHP();
+                OnEnemyHPChanged?.Invoke(currentEnemy);
+            }
+
+            yield return new WaitForSeconds(0.5f); // 短暂延迟
+
+            // 重新开始战斗
+            if (currentEnemy != null && CanStartBattle())
+            {
+                LogMessage("快速重启战斗！");
+                OnBattleRestarted?.Invoke();
+                StartBattle(currentEnemy);
+            }
+        }
+
+        /// <summary>
+        ///     设置自动复活开关
+        /// </summary>
+        public void SetAutoRevive(bool enabled)
+        {
+            autoReviveEnabled = enabled;
+            LogMessage($"自动复活: {(enabled ? "开启" : "关闭")}");
+        }
+
+        /// <summary>
+        ///     获取战斗刷新设置信息
+        /// </summary>
+        public string GetBattleRefreshInfo()
+        {
+            return $"自动复活: {(autoReviveEnabled ? "开启" : "关闭")} | " +
+                   $"复活延迟: {reviveDelay}s | " +
+                   $"重启延迟: {battleRestartDelay}s";
         }
 
         /// <summary>
@@ -425,7 +556,35 @@ namespace IdleGame.Gameplay.Battle
 
         #endregion
 
-        #region 调试方法
+        #region 调试方法 - 新增刷新相关测试
+
+        [ContextMenu("测试战斗刷新")]
+        public void TestBattleRefresh()
+        {
+            RefreshBattle();
+        }
+
+        [ContextMenu("测试玩家死亡流程")]
+        public void TestPlayerDeathFlow()
+        {
+            if (characterSystem.currentCharacter != null)
+            {
+                characterSystem.currentCharacter.currentHP = 0;
+                OnCharacterDied(characterSystem.currentCharacter);
+            }
+        }
+
+        [ContextMenu("切换自动复活")]
+        public void TestToggleAutoRevive()
+        {
+            SetAutoRevive(!autoReviveEnabled);
+        }
+
+        [ContextMenu("立即复活玩家")]
+        public void TestRevivePlayer()
+        {
+            RevivePlayer();
+        }
 
         [ContextMenu("测试战斗胜利")]
         public void TestBattleVictory()
@@ -442,12 +601,6 @@ namespace IdleGame.Gameplay.Battle
         {
             characterSystem.currentCharacter.currentHP = 0;
             OnBattleDefeat(Time.time - 3f);
-        }
-
-        [ContextMenu("复活角色")]
-        public void TestRevivePlayer()
-        {
-            RevivePlayer();
         }
 
         #endregion
