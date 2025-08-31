@@ -5,6 +5,9 @@ using System.Text;
 using Newtonsoft.Json;
 using UnityEngine;
 
+/// <summary>
+///     Encrypt and decrypt JSON data
+/// </summary>
 public static class JsonUtils
 {
     private static readonly string EncryptionKey = EncryptionKeyManager.GetEncryptionKey(); // 必须为16字节的密钥

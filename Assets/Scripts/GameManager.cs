@@ -51,10 +51,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int timeSyncCheckInterval = 300; // 时间同步检查间隔(秒)
 
     // 状态标记
-    private bool isInitialized;
-    private Coroutine autoSaveCoroutine;
-    private DateTime lastTimeSyncCheck;
-    private float suspiciousTimeCount; // 可疑时间修改计数
+    private bool _isInitialized;
+    private Coroutine _autoSaveCoroutine;
+    private DateTime _lastTimeSyncCheck;
+    private float _suspiciousTimeCount; // 可疑时间修改计数
 
     // 事件
     public Action<PlayerData> OnPlayerDataLoaded;
@@ -100,11 +100,11 @@ public class GameManager : MonoBehaviour
         if (_instance == this)
         {
             SaveGame();
-            if (autoSaveCoroutine != null) StopCoroutine(autoSaveCoroutine);
+            if (_autoSaveCoroutine != null) StopCoroutine(_autoSaveCoroutine);
         }
     }
 
-    #region 初始化
+    #region Initialization
 
     private void InitializeService()
     {
@@ -148,7 +148,7 @@ public class GameManager : MonoBehaviour
 
         StartGame();
 
-        isInitialized = true;
+        _isInitialized = true;
         Debug.Log("[GameManager] Game initialization completed!");
     }
 
@@ -161,7 +161,7 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region 存档系统
+    #region Save System
 
     /// <summary>
     ///     保存游戏数据
@@ -221,6 +221,20 @@ public class GameManager : MonoBehaviour
             playerData = new PlayerData();
             SyncDataToSystems();
             logSystem?.LogMessage("存档已删除，开始新游戏");
+        }
+    }
+
+    private void StartAutoSave()
+    {
+        if (enableAutoSave && _autoSaveCoroutine == null) _autoSaveCoroutine = StartCoroutine(AutoSaveCoroutine());
+    }
+
+    private IEnumerator AutoSaveCoroutine()
+    {
+        while (enableAutoSave)
+        {
+            yield return new WaitForSeconds(autoSaveInterval);
+            SaveGame();
         }
     }
 
@@ -346,25 +360,7 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region 自动保存
-
-    private void StartAutoSave()
-    {
-        if (enableAutoSave && autoSaveCoroutine == null) autoSaveCoroutine = StartCoroutine(AutoSaveCoroutine());
-    }
-
-    private IEnumerator AutoSaveCoroutine()
-    {
-        while (enableAutoSave)
-        {
-            yield return new WaitForSeconds(autoSaveInterval);
-            SaveGame();
-        }
-    }
-
-    #endregion
-
-    #region 货币系统
+    #region Currency System
 
     /// <summary>
     ///     添加金币
@@ -417,7 +413,7 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region 游戏功能
+    #region Gameplay Logic
 
     /// <summary>
     ///     购买经验值
@@ -470,120 +466,10 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region 事件回调
-
-    private void OnDataLoaded(PlayerData data)
-    {
-        Debug.Log($"[GameManager] Player data loaded: {data.playerName}");
-    }
-
-    private void OnDataSaved(PlayerData data)
-    {
-        Debug.Log($"[GameManager] Player data saved: {data.playerName}");
-        OnPlayerDataSaved?.Invoke(data);
-    }
-
-    private void OnSaveError(string error)
-    {
-        Debug.LogError($"[GameManager] Save error: {error}");
-        logSystem?.LogMessage($"保存出错：{error}");
-    }
-
-    #endregion
-
-    #region 辅助方法
+    #region Offline Rewarding
 
     /// <summary>
-    ///     记录日志消息
-    /// </summary>
-    private void LogMessage(string message)
-    {
-        logSystem?.LogMessage(message);
-        Debug.Log($"[GameManager] {message}");
-    }
-
-    #endregion
-
-    #region 调试和测试
-
-    [ContextMenu("保存游戏")]
-    public void TestSaveGame()
-    {
-        SaveGame();
-    }
-
-    [ContextMenu("加载游戏")]
-    public void TestLoadGame()
-    {
-        LoadGame();
-    }
-
-    [ContextMenu("添加测试金币")]
-    public void TestAddCoins()
-    {
-        AddCoins(1000);
-    }
-
-    [ContextMenu("测试购买经验")]
-    public void TestBuyExp()
-    {
-        BuyExperience(100);
-    }
-
-    [ContextMenu("测试抽卡")]
-    public void TestGacha()
-    {
-        PerformGacha();
-    }
-
-    [ContextMenu("删除存档")]
-    public void TestDeleteSave()
-    {
-        DeleteSave();
-    }
-
-    #endregion
-
-    #region 公开API
-
-    /// <summary>
-    ///     获取存档信息
-    /// </summary>
-    public string GetSaveFileInfo()
-    {
-        return SaveSystem.GetSaveFileInfo();
-    }
-
-    /// <summary>
-    ///     检查是否有存档
-    /// </summary>
-    public bool HasSaveData()
-    {
-        return SaveSystem.HasSaveData();
-    }
-
-    /// <summary>
-    ///     获取经验购买成本
-    /// </summary>
-    public long GetExpCost(long expAmount)
-    {
-        return expAmount * expCost;
-    }
-
-    /// <summary>
-    ///     获取抽卡成本
-    /// </summary>
-    public int GetGachaCost()
-    {
-        return gachaCost;
-    }
-
-    #endregion
-
-    #region 离线奖励系统
-
-    /// <summary>
-    ///     处理离线进度 - 增强版
+    ///     处理离线进度
     /// </summary>
     private void HandleOfflineProgress()
     {
@@ -620,7 +506,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     计算离线时间 - 带防作弊检测
+    ///     计算离线时间
     /// </summary>
     private OfflineTimeData CalculateOfflineTime()
     {
@@ -649,7 +535,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    ///     计算离线奖励 - 增强版
+    ///     计算离线奖励
     /// </summary>
     private OfflineRewardData CalculateOfflineRewards(OfflineTimeData offlineData)
     {
@@ -773,7 +659,105 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region 工具方法
+    #region Event Handlers
+
+    private void OnDataLoaded(PlayerData data)
+    {
+        Debug.Log($"[GameManager] Player data loaded: {data.playerName}");
+    }
+
+    private void OnDataSaved(PlayerData data)
+    {
+        Debug.Log($"[GameManager] Player data saved: {data.playerName}");
+        OnPlayerDataSaved?.Invoke(data);
+    }
+
+    private void OnSaveError(string error)
+    {
+        Debug.LogError($"[GameManager] Save error: {error}");
+        logSystem?.LogMessage($"保存出错：{error}");
+    }
+
+    #endregion
+
+    #region Debug Methods
+
+    [ContextMenu("保存游戏")]
+    public void TestSaveGame()
+    {
+        SaveGame();
+    }
+
+    [ContextMenu("加载游戏")]
+    public void TestLoadGame()
+    {
+        LoadGame();
+    }
+
+    [ContextMenu("添加测试金币")]
+    public void TestAddCoins()
+    {
+        AddCoins(1000);
+    }
+
+    [ContextMenu("测试购买经验")]
+    public void TestBuyExp()
+    {
+        BuyExperience(100);
+    }
+
+    [ContextMenu("测试抽卡")]
+    public void TestGacha()
+    {
+        PerformGacha();
+    }
+
+    [ContextMenu("删除存档")]
+    public void TestDeleteSave()
+    {
+        DeleteSave();
+    }
+
+    #endregion
+
+    #region Public API
+
+    /// <summary>
+    ///     获取存档信息
+    /// </summary>
+    public string GetSaveFileInfo()
+    {
+        return SaveSystem.GetSaveFileInfo();
+    }
+
+    /// <summary>
+    ///     检查是否有存档
+    /// </summary>
+    public bool HasSaveData()
+    {
+        return SaveSystem.HasSaveData();
+    }
+
+    /// <summary>
+    ///     获取经验购买成本
+    /// </summary>
+    public long GetExpCost(long expAmount)
+    {
+        return expAmount * expCost;
+    }
+
+    /// <summary>
+    ///     获取抽卡成本
+    /// </summary>
+    public int GetGachaCost()
+    {
+        return gachaCost;
+    }
+
+    #endregion
+
+
+    #region Utility Methods
 
     private string GetRouteDisplayName(RouteType route)
     {
@@ -784,6 +768,15 @@ public class GameManager : MonoBehaviour
             RouteType.Experience => "经验线",
             _ => "未知路线"
         };
+    }
+
+    /// <summary>
+    ///     记录日志消息
+    /// </summary>
+    private void LogMessage(string message)
+    {
+        logSystem?.LogMessage(message);
+        Debug.Log($"[GameManager] {message}");
     }
 
     #endregion

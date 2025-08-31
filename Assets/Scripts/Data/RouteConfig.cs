@@ -3,7 +3,7 @@ using UnityEngine;
 namespace IdleGame.Gameplay
 {
     /// <summary>
-    ///     路线配置 - ScriptableObject
+    ///     Data for customized route
     /// </summary>
     [CreateAssetMenu(fileName = "RouteConfig", menuName = "IdleGame/Route Config")]
     public class RouteConfig : ScriptableObject

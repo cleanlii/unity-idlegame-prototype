@@ -245,7 +245,7 @@ public class UIManager : MonoBehaviour
             // Battle feature
             if (gameManager.battleManager != null)
             {
-                gameManager.battleManager.OnEnemyHPChanged += OnEnemyHPChanged;
+                gameManager.battleManager.onEnemyHpChanged += OnEnemyHPChanged;
                 gameManager.battleManager.OnDamageDealt += OnDamageDealt;
                 gameManager.battleManager.OnBattleStarted += OnBattleStarted;
                 gameManager.battleManager.OnBattleEnded += OnBattleEnded;

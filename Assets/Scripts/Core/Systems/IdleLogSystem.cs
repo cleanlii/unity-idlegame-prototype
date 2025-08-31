@@ -10,7 +10,7 @@ namespace IdleGame.Analytics
 {
     public class IdleLogSystem : MonoBehaviour
     {
-        [Header("UI组件")]
+        [Header("UI Elements")]
         [SerializeField] private GameObject logPanel; // 日志面板
         [SerializeField] private Transform logContentParent; // 日志内容父物体
         [SerializeField] private GameObject logEntryPrefab; // 日志条目预制体
@@ -19,14 +19,14 @@ namespace IdleGame.Analytics
         [SerializeField] private Button clearButton; // 清空日志按钮
         [SerializeField] private TextMeshProUGUI logCountText; // 日志数量显示
 
-        [Header("日志设置")]
+        [Header("Log Entry Settings")]
         [SerializeField] private int maxLogEntries = 50; // 最大日志条目数
         [SerializeField] private bool showTimestamps = true; // 显示时间戳
         [SerializeField] private bool autoScrollToBottom = true; // 自动滚动到底部
         [SerializeField] private float logFadeInDuration = 0.3f; // 日志淡入时间
         [SerializeField] private float logLifetime = 30f; // 日志显示时长（秒）
 
-        [Header("日志分类颜色")]
+        [Header("Highlight Settings")]
         [SerializeField] private Color battleColor = Color.red; // 战斗相关
         [SerializeField] private Color expColor = Color.blue; // 经验相关
         [SerializeField] private Color coinColor = Color.yellow; // 金币相关
@@ -34,17 +34,15 @@ namespace IdleGame.Analytics
         [SerializeField] private Color warningColor = Color.yellow; // 警告消息
         [SerializeField] private Color characterColor = Color.cyan; // 角色相关
 
-        [Header("动画设置")]
+        [Header("Animation Settings")]
         [SerializeField] private bool enableEntryAnimations = true;
         [SerializeField] private float entrySlideDistance = 50f;
         [SerializeField] private Ease entryEase = Ease.OutBack;
 
-        // 数据结构
-        private readonly Queue<LogEntry> logEntries = new();
-        private readonly List<GameObject> logUIElements = new();
-        private bool isPanelVisible = true;
+        private readonly Queue<LogEntry> _logEntries = new();
+        private readonly List<GameObject> _logUIElements = new();
+        private bool _isPanelVisible = true;
 
-        // 事件
         public event Action<LogEntry> OnNewLogEntry;
         public event Action OnLogCleared;
 
@@ -59,7 +57,7 @@ namespace IdleGame.Analytics
             LogMessage("游戏日志系统已启动", LogType.System);
         }
 
-        #region 初始化
+        #region Initialization
 
         private void InitializeLogSystem()
         {
@@ -85,7 +83,7 @@ namespace IdleGame.Analytics
 
             // 设置初始面板状态
             if (logPanel != null)
-                logPanel.SetActive(isPanelVisible);
+                logPanel.SetActive(_isPanelVisible);
         }
 
         private void CreateDefaultLogPanel()
@@ -97,7 +95,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 核心日志方法
+        #region Core Methods
 
         /// <summary>
         ///     记录通用日志消息
@@ -233,7 +231,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region UI管理
+        #region UI Display
 
         /// <summary>
         ///     添加日志条目到UI
@@ -241,12 +239,12 @@ namespace IdleGame.Analytics
         private void AddLogEntry(LogEntry entry)
         {
             // 添加到数据队列
-            logEntries.Enqueue(entry);
+            _logEntries.Enqueue(entry);
 
             // 移除超出限制的旧日志
-            while (logEntries.Count > maxLogEntries)
+            while (_logEntries.Count > maxLogEntries)
             {
-                var oldEntry = logEntries.Dequeue();
+                var oldEntry = _logEntries.Dequeue();
                 RemoveOldestLogUI();
             }
 
@@ -272,7 +270,7 @@ namespace IdleGame.Analytics
 
             // 实例化日志条目
             var logObject = Instantiate(logEntryPrefab, logContentParent);
-            logUIElements.Add(logObject);
+            _logUIElements.Add(logObject);
 
             // 设置日志内容
             var textComponent = logObject.GetComponentInChildren<TextMeshProUGUI>();
@@ -300,10 +298,10 @@ namespace IdleGame.Analytics
         /// </summary>
         private void RemoveOldestLogUI()
         {
-            if (logUIElements.Count > 0)
+            if (_logUIElements.Count > 0)
             {
-                var oldestLog = logUIElements[0];
-                logUIElements.RemoveAt(0);
+                var oldestLog = _logUIElements[0];
+                _logUIElements.RemoveAt(0);
 
                 if (oldestLog != null)
                 {
@@ -333,9 +331,9 @@ namespace IdleGame.Analytics
         {
             yield return new WaitForSeconds(logLifetime);
 
-            if (logObject != null && logUIElements.Contains(logObject))
+            if (logObject != null && _logUIElements.Contains(logObject))
             {
-                logUIElements.Remove(logObject);
+                _logUIElements.Remove(logObject);
 
                 // 播放淡出动画
                 var canvasGroup = logObject.GetComponent<CanvasGroup>();
@@ -348,18 +346,18 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region UI控制
+        #region UI Control
 
         /// <summary>
         ///     切换日志面板显示/隐藏
         /// </summary>
         public void ToggleLogPanel()
         {
-            isPanelVisible = !isPanelVisible;
+            _isPanelVisible = !_isPanelVisible;
 
             if (logPanel != null)
             {
-                if (isPanelVisible)
+                if (_isPanelVisible)
                     ShowLogPanel();
                 else
                     HideLogPanel();
@@ -375,7 +373,7 @@ namespace IdleGame.Analytics
             {
                 logPanel.SetActive(true);
                 logPanel.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
-                isPanelVisible = true;
+                _isPanelVisible = true;
             }
         }
 
@@ -388,7 +386,7 @@ namespace IdleGame.Analytics
             {
                 logPanel.transform.DOScale(Vector3.zero, 0.2f).SetEase(Ease.InBack)
                     .OnComplete(() => logPanel.SetActive(false));
-                isPanelVisible = false;
+                _isPanelVisible = false;
             }
         }
 
@@ -398,16 +396,16 @@ namespace IdleGame.Analytics
         public void ClearLogs()
         {
             // 清空数据
-            logEntries.Clear();
+            _logEntries.Clear();
 
             // 清空UI元素
-            foreach (var logUI in logUIElements)
+            foreach (var logUI in _logUIElements)
             {
                 if (logUI != null)
                     Destroy(logUI);
             }
 
-            logUIElements.Clear();
+            _logUIElements.Clear();
 
             // 更新显示
             UpdateLogCountDisplay();
@@ -424,12 +422,12 @@ namespace IdleGame.Analytics
         private void UpdateLogCountDisplay()
         {
             if (logCountText != null)
-                logCountText.text = $"日志 ({logEntries.Count}/{maxLogEntries})";
+                logCountText.text = $"日志 ({_logEntries.Count}/{maxLogEntries})";
         }
 
         #endregion
 
-        #region 工具方法
+        #region Utility Methods
 
         /// <summary>
         ///     根据日志类型获取颜色
@@ -453,7 +451,7 @@ namespace IdleGame.Analytics
         /// </summary>
         public LogEntry[] GetRecentLogs(int count = 20)
         {
-            var logs = logEntries.ToArray();
+            var logs = _logEntries.ToArray();
             var startIndex = Mathf.Max(0, logs.Length - count);
             var actualCount = Mathf.Min(count, logs.Length);
 
@@ -469,7 +467,7 @@ namespace IdleGame.Analytics
         public List<LogEntry> GetLogsByType(LogType logType)
         {
             var result = new List<LogEntry>();
-            foreach (var entry in logEntries)
+            foreach (var entry in _logEntries)
             {
                 if (entry.logType == logType)
                     result.Add(entry);
@@ -493,22 +491,7 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 兼容性方法（保持与原有代码的兼容）
-
-        /// <summary>
-        ///     兼容原有的LogDamage方法
-        /// </summary>
-        public void LogDamage(float damage, bool isPlayerDamage)
-        {
-            var characterName = GameManager.Instance?.characterSystem?.currentCharacter?.config?.characterName ?? "玩家";
-            var enemyName = GameManager.Instance?.battleManager?.GetCurrentEnemy()?.enemyName ?? "敌人";
-
-            LogDamage(damage, isPlayerDamage, characterName, enemyName);
-        }
-
-        #endregion
-
-        #region 调试方法
+        #region Debug Methods
 
         [ContextMenu("测试战斗日志")]
         public void TestBattleLog()
@@ -558,11 +541,8 @@ namespace IdleGame.Analytics
         #endregion
     }
 
-    #region 数据结构
+    #region Data Structures
 
-    /// <summary>
-    ///     日志条目数据结构
-    /// </summary>
     [Serializable]
     public class LogEntry
     {
@@ -582,9 +562,6 @@ namespace IdleGame.Analytics
         }
     }
 
-    /// <summary>
-    ///     日志类型枚举
-    /// </summary>
     public enum LogType
     {
         General, // 一般信息

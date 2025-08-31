@@ -8,14 +8,14 @@ using UnityEngine;
 namespace IdleGame.Gameplay
 {
     /// <summary>
-    ///     角色系统 - 管理角色切换、升级、数据同步等
+    ///     Manages character switching, upgrading, status update, and more
     /// </summary>
     public class CharacterSystem : MonoBehaviour
     {
-        [Header("角色配置")]
+        [Header("Library Settings")]
         public CharacterDatabase characterDb; // 默认角色配置
 
-        [Header("运行时数据")]
+        [Header("Current Status")]
         public CharacterData currentCharacter; // 当前使用的角色
 
         private readonly Dictionary<string, CharacterData> ownedCharacters = new();
@@ -32,7 +32,7 @@ namespace IdleGame.Gameplay
             logSystem = ServiceLocator.Get<IdleLogSystem>();
         }
 
-        #region 初始化
+        #region Initialization
 
         /// <summary>
         ///     初始化角色系统
@@ -137,7 +137,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 角色管理
+        #region Character Management
 
         /// <summary>
         ///     添加新角色到收藏
@@ -215,7 +215,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 经验和升级
+        #region Upgrading
 
         /// <summary>
         ///     给当前角色添加经验
@@ -259,7 +259,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region 战斗相关
+        #region Battle
 
         /// <summary>
         ///     当前角色受到伤害
@@ -318,7 +318,7 @@ namespace IdleGame.Gameplay
 
         #endregion
 
-        #region UI支持方法
+        #region UI Support
 
         /// <summary>
         ///     获取当前角色信息 (UI显示用)
@@ -356,33 +356,6 @@ namespace IdleGame.Gameplay
 
             var expNeeded = currentCharacter.GetExpToNextLevel();
             return expNeeded > 0 && currentCharacter.totalExperience >= expNeeded;
-        }
-
-        #endregion
-
-        #region 测试方法
-
-        [ContextMenu("测试：添加经验")]
-        public void TestAddExperience()
-        {
-            GainExperience(50);
-        }
-
-        [ContextMenu("测试：购买经验")]
-        public void TestBuyExperience()
-        {
-            BuyExperience(100, 75); // 花费100金币买75经验
-        }
-
-        [ContextMenu("测试：切换角色")]
-        public void TestSwitchCharacter()
-        {
-            var characters = GetOwnedCharacters();
-            if (characters.Count > 1)
-            {
-                var nextCharacter = characters.FirstOrDefault(c => c != currentCharacter);
-                if (nextCharacter != null) SwitchCharacter(nextCharacter.config.characterID);
-            }
         }
 
         #endregion
