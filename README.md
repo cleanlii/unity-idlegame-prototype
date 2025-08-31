@@ -61,7 +61,7 @@ Assets/Scripts/
 
 ---
 
-## Core Systems Overview
+## System Overview
 
 ### **Battle Manager**
 The `BattleManager` handles all combat logic with automated damage calculation and turn-based mechanics:
@@ -127,7 +127,7 @@ Single currency (coins) used for all transactions:
 - Gacha
 - ~~(TODO: Equipment, upgrades, etc.)~~
 
-### **Logging System** - Action Tracking
+### **Logging System**
 Comprehensive logging system for all player actions and game events:
 
 **Log Categories:**
