@@ -39,9 +39,9 @@ namespace IdleGame.Gameplay
         /// </summary>
         public void Initialize()
         {
-            // 加载玩家已拥有的角色数据
-            LoadOwnedCharacters();
-
+            // // 加载玩家已拥有的角色数据
+            // LoadOwnedCharacters();
+            //
             // 如果没有角色，创建默认角色
             if (ownedCharacters.Count == 0) CreateDefaultCharacter();
 
@@ -71,13 +71,8 @@ namespace IdleGame.Gameplay
         /// <summary>
         ///     加载已拥有的角色 (从PlayerData或存档)
         /// </summary>
-        private void LoadOwnedCharacters()
+        public void LoadOwnedCharacters(PlayerData playerData)
         {
-            var gameManager = GameManager.Instance;
-            if (gameManager?.playerData == null) return;
-
-            var playerData = gameManager.playerData;
-
             // 清空现有角色数据
             ownedCharacters.Clear();
 

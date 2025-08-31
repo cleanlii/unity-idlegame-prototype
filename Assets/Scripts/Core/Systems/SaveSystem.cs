@@ -44,7 +44,7 @@ namespace IdleGame.Core
                 // File.WriteAllText(SavePath, jsonData);
 
                 // TODO: 加密保存
-                JsonUtils.SaveEncryptedJson(SavePath, playerData);
+                JsonUtils.SaveEncryptedJson(SavePath, playerData, true);
 
                 Debug.Log($"[SaveSystem] Data saved successfully at: {SavePath}");
                 OnDataSaved?.Invoke(playerData);
@@ -109,7 +109,7 @@ namespace IdleGame.Core
             {
                 var jsonData = File.ReadAllText(filePath);
                 // var playerData = JsonUtility.FromJson<PlayerData>(jsonData);
-                var playerData = JsonUtils.LoadEncryptedJson<PlayerData>(SavePath);
+                var playerData = JsonUtils.LoadEncryptedJson<PlayerData>(SavePath, true);
 
                 // 验证数据完整性
                 if (ValidatePlayerData(playerData)) return playerData;

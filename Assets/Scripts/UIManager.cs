@@ -824,14 +824,6 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void PlayLevelUpEffect()
     {
-        if (levelUpEffect != null)
-        {
-            var effect = Instantiate(levelUpEffect, characterLevelText.transform);
-            Destroy(effect, 2f);
-        }
-
-        // 屏幕震动效果（可选）
-        Camera.main.transform.DOShakePosition(0.5f, 0.1f);
     }
 
     /// <summary>
@@ -839,11 +831,6 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void PlayCoinGainEffect()
     {
-        if (coinGainEffect != null)
-        {
-            var effect = Instantiate(coinGainEffect, coinText.transform);
-            Destroy(effect, 1.5f);
-        }
     }
 
     /// <summary>
@@ -851,11 +838,6 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void PlayExpGainEffect()
     {
-        if (expGainEffect != null)
-        {
-            var effect = Instantiate(expGainEffect, expSlider.transform);
-            Destroy(effect, 1f);
-        }
     }
 
     #endregion

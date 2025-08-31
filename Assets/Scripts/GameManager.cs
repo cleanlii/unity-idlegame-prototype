@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using IdleGame.Analytics;
+using IdleGame.Character;
 using IdleGame.Core;
 using IdleGame.Gameplay;
 using IdleGame.Gameplay.Battle;
 using UnityEngine;
+using CharacterSaveData = IdleGame.Analytics.CharacterSaveData;
 
 public class GameManager : MonoBehaviour
 {
@@ -34,14 +37,31 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int expCost = 10; // 1点经验值的金币成本
     [SerializeField] private int gachaCost = 100; // 单次抽卡金币成本
 
+    [Header("离线奖励设置")]
+    [SerializeField] private float maxOfflineHours = 24f; // 最大离线时长
+    [SerializeField] private float minOfflineMinutes = 1f; // 最小离线时长
+    [SerializeField] private bool enableOfflineRewards = true;
+
+    [Header("离线奖励倍率")]
+    [SerializeField] private OfflineRewardConfig offlineConfig;
+
+    [Header("防作弊设置")]
+    [SerializeField] private bool enableAntiCheat = true;
+    [SerializeField] private float maxReasonableOfflineHours = 72f; // 合理的最大离线时长
+    [SerializeField] private int timeSyncCheckInterval = 300; // 时间同步检查间隔(秒)
+
     // 状态标记
     private bool isInitialized;
     private Coroutine autoSaveCoroutine;
+    private DateTime lastTimeSyncCheck;
+    private float suspiciousTimeCount; // 可疑时间修改计数
 
     // 事件
     public Action<PlayerData> OnPlayerDataLoaded;
     public Action<PlayerData> OnPlayerDataSaved;
     public Action<long, long> OnCurrencyChanged; // oldAmount, newAmount
+
+    public Action<OfflineRewardData> OnOfflineRewardsCalculated;
 
     public static GameManager Instance
     {
@@ -73,21 +93,6 @@ public class GameManager : MonoBehaviour
     {
         // 确保所有组件初始化完成后再加载数据
         StartCoroutine(DelayedInitialization());
-    }
-
-    private void OnApplicationPause(bool pauseStatus)
-    {
-        if (pauseStatus)
-            SaveGame();
-        else
-            HandleGameResume();
-    }
-
-    private void OnApplicationFocus(bool hasFocus)
-    {
-        if (!hasFocus)
-            SaveGame();
-        else if (isInitialized) HandleGameResume();
     }
 
     private void OnDestroy()
@@ -122,6 +127,7 @@ public class GameManager : MonoBehaviour
     private void InitializeGameplay()
     {
         characterSystem.Initialize();
+        spireSystem.Initialize();
     }
 
     private IEnumerator DelayedInitialization()
@@ -131,17 +137,26 @@ public class GameManager : MonoBehaviour
         // 加载玩家数据
         LoadGame();
 
-        // 计算离线时间和奖励
-        HandleOfflineProgress();
-
         yield return new WaitForEndOfFrame();
+
         InitializeGameplay();
 
         // 启动自动保存
         StartAutoSave();
 
+        yield return new WaitForEndOfFrame();
+
+        StartGame();
+
         isInitialized = true;
         Debug.Log("[GameManager] Game initialization completed!");
+    }
+
+    private void StartGame()
+    {
+        Debug.Log("[GameManager] Starting game...");
+
+        if (spireSystem != null) SwitchRoute(playerData.selectedRoute);
     }
 
     #endregion
@@ -165,7 +180,7 @@ public class GameManager : MonoBehaviour
         var success = SaveSystem.SavePlayerData(playerData);
 
         if (success)
-            logSystem?.LogMessage("游戏数据已保存");
+            logSystem?.LogMessage("游戏数据已保存" + playerData.currentCharacterID);
         else
             logSystem?.LogMessage("保存失败，请检查存储空间");
     }
@@ -183,6 +198,9 @@ public class GameManager : MonoBehaviour
 
             // 同步数据到各个系统
             SyncDataToSystems();
+
+            // 计算离线时间和奖励
+            HandleOfflineProgress();
 
             OnPlayerDataLoaded?.Invoke(playerData);
             logSystem?.LogMessage($"欢迎回来，{playerData.playerName}！");
@@ -220,16 +238,28 @@ public class GameManager : MonoBehaviour
         var ownedCharacters = characterSystem.GetOwnedCharacters();
         foreach (var character in ownedCharacters)
         {
-            var saveData = character.GetSaveData();
-            // 这里需要将CharacterSaveData转换为PlayerData中的CharacterData格式
-            // 暂时跳过具体实现，实际需要根据数据结构调整
+            if (character.IsNull) continue;
+
+            // 将CharacterData转换为CharacterSaveData
+            var saveData = new CharacterSaveData
+            {
+                configID = character.config.characterID,
+                level = character.level,
+                totalExperience = character.totalExperience,
+                totalBattles = character.totalBattles,
+                victoriesCount = character.victoriesCount,
+                totalDamageDealt = character.totalDamageDealt,
+                totalDamageTaken = character.totalDamageTaken,
+                lastUsedTime = DateTime.Now
+            };
+
+            playerData.ownedCharacters.Add(saveData);
         }
 
         // 同步当前角色ID
-        if (characterSystem.currentCharacter != null)
-        {
-            // playerData.currentCharacterID = characterSystem.currentCharacter.config.characterID;
-        }
+        if (!characterSystem.currentCharacter.IsNull) playerData.currentCharacterID = characterSystem.currentCharacter.config.characterID;
+
+        LogMessage($"已同步{ownedCharacters.Count}个角色数据到存档");
     }
 
     /// <summary>
@@ -240,15 +270,78 @@ public class GameManager : MonoBehaviour
         if (playerData == null) return;
 
         // 同步到角色系统
-        if (characterSystem != null)
+        if (characterSystem != null) LoadCharacterDataFromPlayerData();
+
+        // 同步UI显示
+        if (uiManager != null) uiManager.UpdateAllUI();
+    }
+
+    /// <summary>
+    ///     从PlayerData加载角色数据到CharacterSystem
+    /// </summary>
+    private void LoadCharacterDataFromPlayerData()
+    {
+        if (characterSystem?.characterDb == null || playerData?.ownedCharacters == null) return;
+
+        // 清空CharacterSystem中的角色数据
+        characterSystem.GetOwnedCharacters().Clear();
+
+        // 重新加载角色
+        foreach (var characterSave in playerData.ownedCharacters)
         {
-            // 这里需要从PlayerData恢复角色数据
-            // characterSystem.LoadFromPlayerData(playerData);
+            if (string.IsNullOrEmpty(characterSave.configID)) continue;
+
+            // 查找角色配置
+            var config = characterSystem.characterDb.GetCharacterConfig(characterSave.configID);
+            if (config == null)
+            {
+                LogMessage($"警告：未找到角色配置 {characterSave.configID}");
+                continue;
+            }
+
+            // 创建CharacterData并恢复存档状态
+            var characterData = new CharacterData(config, characterSave.level, characterSave.totalExperience);
+
+            // 恢复战斗统计
+            characterData.totalBattles = characterSave.totalBattles;
+            characterData.victoriesCount = characterSave.victoriesCount;
+            characterData.totalDamageDealt = characterSave.totalDamageDealt;
+            characterData.totalDamageTaken = characterSave.totalDamageTaken;
+
+            // 添加到角色系统
+            characterSystem.AddCharacter(characterData);
         }
 
-        if (spireSystem != null) SwitchRoute(playerData.selectedRoute);
+        // 设置当前角色
+        if (!string.IsNullOrEmpty(playerData.currentCharacterID))
+        {
+            var success = characterSystem.SwitchCharacter(playerData.currentCharacterID);
+            if (!success)
+            {
+                LogMessage($"无法切换到角色 {playerData.currentCharacterID}，使用默认角色");
+                SetDefaultCurrentCharacter();
+            }
+        }
+        else
+            SetDefaultCurrentCharacter();
 
-        // 同步到其他系统...
+        LogMessage($"已从存档加载{playerData.ownedCharacters.Count}个角色");
+    }
+
+    private void SetDefaultCurrentCharacter()
+    {
+        var ownedCharacters = characterSystem.GetOwnedCharacters();
+        if (ownedCharacters.Count > 0)
+            characterSystem.SwitchCharacter(ownedCharacters[0].config.characterID);
+        else
+        {
+            // 如果没有角色，创建默认角色
+            if (characterSystem.characterDb?.defaultCharacter != null)
+            {
+                characterSystem.AddCharacterByConfig(characterSystem.characterDb.defaultCharacter);
+                characterSystem.SwitchCharacter(characterSystem.characterDb.defaultCharacter.characterID);
+            }
+        }
     }
 
     #endregion
@@ -267,84 +360,6 @@ public class GameManager : MonoBehaviour
             yield return new WaitForSeconds(autoSaveInterval);
             SaveGame();
         }
-    }
-
-    #endregion
-
-    #region 离线系统
-
-    /// <summary>
-    ///     处理离线进度
-    /// </summary>
-    private void HandleOfflineProgress()
-    {
-        if (playerData == null) return;
-
-        var offlineSeconds = playerData.CalculateOfflineTime();
-
-        if (offlineSeconds > 60) // 离线超过1分钟才计算奖励
-        {
-            var offlineHours = offlineSeconds / 3600f;
-            CalculateOfflineRewards(offlineHours);
-        }
-    }
-
-    /// <summary>
-    ///     计算离线奖励
-    /// </summary>
-    private void CalculateOfflineRewards(float offlineHours)
-    {
-        // 基于选择的路线计算奖励
-        switch (playerData.selectedRoute)
-        {
-            case RouteType.Battle:
-                CalculateBattleOfflineRewards(offlineHours);
-                break;
-            case RouteType.Economy:
-                CalculateEconomyOfflineRewards(offlineHours);
-                break;
-            case RouteType.Experience:
-                CalculateExpOfflineRewards(offlineHours);
-                break;
-        }
-    }
-
-    private void CalculateBattleOfflineRewards(float offlineHours)
-    {
-        // 战斗线：经验 + 少量金币
-        var expReward = (long)(offlineHours * 50); // 每小时50经验
-        var coinReward = (long)(offlineHours * 20); // 每小时20金币
-
-        characterSystem?.GainExperience(expReward);
-        AddCoins(coinReward);
-
-        logSystem?.LogOfflineReward("战斗", (int)(expReward + coinReward), offlineHours);
-    }
-
-    private void CalculateEconomyOfflineRewards(float offlineHours)
-    {
-        // 经济线：大量金币
-        var coinReward = (long)(offlineHours * 80); // 每小时80金币
-        AddCoins(coinReward);
-
-        logSystem?.LogOfflineReward("金币", (int)coinReward, offlineHours);
-    }
-
-    private void CalculateExpOfflineRewards(float offlineHours)
-    {
-        // 经验线：大量经验
-        var expReward = (long)(offlineHours * 120); // 每小时120经验
-        characterSystem?.GainExperience(expReward);
-
-        logSystem?.LogOfflineReward("经验", (int)expReward, offlineHours);
-    }
-
-    /// <summary>
-    ///     处理游戏恢复（从后台回到前台）
-    /// </summary>
-    private void HandleGameResume()
-    {
-        if (playerData != null) HandleOfflineProgress();
     }
 
     #endregion
@@ -561,6 +576,214 @@ public class GameManager : MonoBehaviour
     public int GetGachaCost()
     {
         return gachaCost;
+    }
+
+    #endregion
+
+    #region 离线奖励系统
+
+    /// <summary>
+    ///     处理离线进度 - 增强版
+    /// </summary>
+    private void HandleOfflineProgress()
+    {
+        if (playerData == null) return;
+
+        var offlineData = CalculateOfflineTime();
+
+        if (!offlineData.isValid)
+        {
+            LogMessage($"离线时间异常：{offlineData.reason}");
+            return;
+        }
+
+        if (offlineData.totalMinutes < minOfflineMinutes)
+        {
+            LogMessage($"离线时间不足 {minOfflineMinutes} 分钟，无奖励");
+            return;
+        }
+
+        // 计算离线奖励
+        var rewards = CalculateOfflineRewards(offlineData);
+
+        // 应用奖励
+        ApplyOfflineRewards(rewards);
+
+        // 记录离线数据
+        playerData.offlineDuration = (long)offlineData.totalSeconds;
+        playerData.totalOfflineRewards += rewards.totalValue;
+
+        // 触发事件
+        OnOfflineRewardsCalculated?.Invoke(rewards);
+
+        LogMessage($"离线奖励处理完成：{rewards.GetSummary()}");
+    }
+
+    /// <summary>
+    ///     计算离线时间 - 带防作弊检测
+    /// </summary>
+    private OfflineTimeData CalculateOfflineTime()
+    {
+        var currentTime = DateTime.Now;
+        var lastSaveTime = playerData.lastSaveTime;
+        var offlineTimeSpan = currentTime - lastSaveTime;
+
+        // Debug.LogError($"offline time: {playerData.CalculateOfflineTime()}");
+        // Debug.LogError($"lastSaveTime: {playerData.lastSaveTime}");
+        // Debug.LogError($"currentTime: {DateTime.Now}");
+
+        var data = new OfflineTimeData
+        {
+            startTime = lastSaveTime,
+            endTime = currentTime,
+            totalSeconds = offlineTimeSpan.TotalSeconds,
+            totalMinutes = offlineTimeSpan.TotalMinutes,
+            totalHours = offlineTimeSpan.TotalHours
+        };
+
+        // 防作弊检测
+        data.isValid = data.totalMinutes >= 0; // 基础验证：时间不能倒退
+        data.reason = data.isValid ? "正常" : "时间倒退";
+
+        return data;
+    }
+
+    /// <summary>
+    ///     计算离线奖励 - 增强版
+    /// </summary>
+    private OfflineRewardData CalculateOfflineRewards(OfflineTimeData offlineData)
+    {
+        var rewards = new OfflineRewardData
+        {
+            offlineHours = (float)offlineData.totalHours,
+            route = playerData.selectedRoute
+        };
+
+        // 限制最大奖励时长
+        var effectiveHours = Math.Min(offlineData.totalHours, maxOfflineHours);
+
+        // 根据角色等级调整基础倍率
+        var levelBonus = 1f + (characterSystem.currentCharacter?.level ?? 1) * 0.02f;
+
+        switch (playerData.selectedRoute)
+        {
+            case RouteType.Battle:
+                CalculateBattleOfflineRewards(rewards, effectiveHours, levelBonus);
+                break;
+            case RouteType.Economy:
+                CalculateEconomyOfflineRewards(rewards, effectiveHours, levelBonus);
+                break;
+            case RouteType.Experience:
+                CalculateExpOfflineRewards(rewards, effectiveHours, levelBonus);
+                break;
+        }
+
+        return rewards;
+    }
+
+    private void CalculateBattleOfflineRewards(OfflineRewardData rewards, double effectiveHours, float levelBonus)
+    {
+        // 战斗线：经验为主，少量金币
+        var baseExpPerHour = offlineConfig.battleExpPerHour * levelBonus;
+        var baseCoinPerHour = offlineConfig.battleCoinPerHour * levelBonus;
+
+        // 模拟战斗效率递减（长时间离线效率降低）
+        var efficiencyFactor = CalculateEfficiencyFactor(effectiveHours);
+
+        rewards.expReward = (long)(baseExpPerHour * effectiveHours * efficiencyFactor);
+        rewards.coinReward = (long)(baseCoinPerHour * effectiveHours * efficiencyFactor);
+
+        // 模拟战斗次数
+        var avgBattleTime = 10f; // 平均每场战斗10秒
+        var estimatedBattles = (int)(effectiveHours * 3600 / avgBattleTime * efficiencyFactor);
+        rewards.simulatedBattles = estimatedBattles;
+
+        rewards.description = $"模拟 {estimatedBattles} 场战斗";
+    }
+
+    private void CalculateEconomyOfflineRewards(OfflineRewardData rewards, double effectiveHours, float levelBonus)
+    {
+        // 经济线：金币为主
+        var baseCoinPerHour = offlineConfig.economyCoinPerHour * levelBonus;
+        var efficiencyFactor = CalculateEfficiencyFactor(effectiveHours);
+
+        rewards.coinReward = (long)(baseCoinPerHour * effectiveHours * efficiencyFactor);
+        rewards.expReward = 0; // 经济线不给经验
+
+        rewards.description = $"金币挖掘 {effectiveHours:F1} 小时";
+    }
+
+    private void CalculateExpOfflineRewards(OfflineRewardData rewards, double effectiveHours, float levelBonus)
+    {
+        // 经验线：经验为主
+        var baseExpPerHour = offlineConfig.experienceExpPerHour * levelBonus;
+        var efficiencyFactor = CalculateEfficiencyFactor(effectiveHours);
+
+        rewards.expReward = (long)(baseExpPerHour * effectiveHours * efficiencyFactor);
+        rewards.coinReward = 0; // 经验线不给金币
+
+        rewards.description = $"经验修炼 {effectiveHours:F1} 小时";
+    }
+
+    /// <summary>
+    ///     计算效率因子（长时间离线效率递减）
+    /// </summary>
+    private float CalculateEfficiencyFactor(double hours)
+    {
+        if (hours <= 1) return 1f; // 1小时内全效率
+        if (hours <= 6) return 0.9f; // 6小时内90%效率
+        if (hours <= 12) return 0.8f; // 12小时内80%效率
+        if (hours <= 24) return 0.7f; // 24小时内70%效率
+        return 0.5f; // 超过24小时50%效率
+    }
+
+    /// <summary>
+    ///     应用离线奖励
+    /// </summary>
+    private void ApplyOfflineRewards(OfflineRewardData rewards)
+    {
+        var rewardMessages = new List<string>();
+
+        // 应用经验奖励
+        if (rewards.expReward > 0)
+        {
+            characterSystem?.GainExperience(rewards.expReward);
+            rewardMessages.Add($"经验 +{rewards.expReward:N0}");
+        }
+
+        // 应用金币奖励
+        if (rewards.coinReward > 0)
+        {
+            AddCoins(rewards.coinReward);
+            rewardMessages.Add($"金币 +{rewards.coinReward:N0}");
+        }
+
+        // 记录详细日志
+        var rewardSummary = string.Join(", ", rewardMessages);
+        var bonusText = rewards.hasBonus ? $" (倍率: {rewards.bonusMultiplier:F1}x)" : "";
+
+        logSystem?.LogMessage("=== 离线奖励 ===");
+        logSystem?.LogMessage($"离线时长: {rewards.offlineHours:F1} 小时");
+        logSystem?.LogMessage($"路线: {GetRouteDisplayName(rewards.route)}");
+        logSystem?.LogMessage($"奖励: {rewardSummary}{bonusText}");
+        logSystem?.LogMessage($"说明: {rewards.description}");
+
+        if (rewards.simulatedBattles > 0) logSystem?.LogMessage($"模拟战斗: {rewards.simulatedBattles} 场");
+    }
+
+    #endregion
+
+    #region 工具方法
+
+    private string GetRouteDisplayName(RouteType route)
+    {
+        return route switch
+        {
+            RouteType.Battle => "战斗线",
+            RouteType.Economy => "金币线",
+            RouteType.Experience => "经验线",
+            _ => "未知路线"
+        };
     }
 
     #endregion

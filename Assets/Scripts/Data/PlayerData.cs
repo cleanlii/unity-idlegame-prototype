@@ -56,15 +56,11 @@ namespace IdleGame.Analytics
         public long offlineDuration; // 离线时长 (秒)
         public long totalOfflineRewards; // 总离线奖励
 
-        [Header("成就数据")]
-        public List<string> unlockedAchievements = new(); // 已解锁成就
-        public Dictionary<string, int> achievementProgress = new(); // 成就进度
-
         [Header("游戏设置")]
         public float musicVolume = 1f; // 音乐音量
         public float sfxVolume = 1f; // 音效音量
         public bool enableNotifications = true; // 是否开启通知
-        public string language = "Chinese"; // 游戏语言
+        public string language = "English"; // 游戏语言
         public bool enableAutoSave = true; // 自动保存
 
         // 构造函数
@@ -102,10 +98,6 @@ namespace IdleGame.Analytics
                 ownedCharacters.Add(defaultCharacterData);
                 currentCharacterID = defaultCharacterData.configID;
             }
-
-            // 初始化成就进度字典
-            if (achievementProgress == null)
-                achievementProgress = new Dictionary<string, int>();
         }
 
         #endregion
@@ -185,6 +177,13 @@ namespace IdleGame.Analytics
         #endregion
 
         #region 角色管理
+
+        public bool HasCharacter(string characterID)
+        {
+            // 检查是否已经拥有该角色
+            var existingChar = ownedCharacters.Find(c => c.configID == characterID);
+            return existingChar != null;
+        }
 
         /// <summary>
         ///     添加角色到收藏
@@ -374,59 +373,6 @@ namespace IdleGame.Analytics
 
         #endregion
 
-        #region 成就系统
-
-        /// <summary>
-        ///     解锁成就
-        /// </summary>
-        public bool UnlockAchievement(string achievementID)
-        {
-            if (string.IsNullOrEmpty(achievementID)) return false;
-
-            if (!unlockedAchievements.Contains(achievementID))
-            {
-                unlockedAchievements.Add(achievementID);
-                return true; // 新解锁
-            }
-
-            return false; // 已经解锁过
-        }
-
-        /// <summary>
-        ///     更新成就进度
-        /// </summary>
-        public void UpdateAchievementProgress(string achievementID, int progress)
-        {
-            if (string.IsNullOrEmpty(achievementID)) return;
-            achievementProgress[achievementID] = progress;
-        }
-
-        /// <summary>
-        ///     获取成就进度
-        /// </summary>
-        public int GetAchievementProgress(string achievementID)
-        {
-            return achievementProgress.ContainsKey(achievementID) ? achievementProgress[achievementID] : 0;
-        }
-
-        /// <summary>
-        ///     检查成就是否已解锁
-        /// </summary>
-        public bool IsAchievementUnlocked(string achievementID)
-        {
-            return unlockedAchievements.Contains(achievementID);
-        }
-
-        /// <summary>
-        ///     获取已解锁成就数量
-        /// </summary>
-        public int GetUnlockedAchievementCount()
-        {
-            return unlockedAchievements.Count;
-        }
-
-        #endregion
-
         #region 综合统计
 
         /// <summary>
@@ -531,12 +477,10 @@ namespace IdleGame.Analytics
                 InitializeDefaultData();
 
             if (!string.IsNullOrEmpty(currentCharacterID))
+            {
                 if (ownedCharacters.Find(c => c.configID == currentCharacterID) == null)
                     currentCharacterID = ownedCharacters.Count > 0 ? ownedCharacters[0].configID : "";
-
-            // 确保集合不为null
-            if (unlockedAchievements == null) unlockedAchievements = new List<string>();
-            if (achievementProgress == null) achievementProgress = new Dictionary<string, int>();
+            }
         }
 
         #endregion

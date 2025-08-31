@@ -9,6 +9,7 @@ namespace IdleGame.Gameplay
 {
     public enum RouteType
     {
+        None,
         Battle, // 战斗线
         Economy, // 金币线
         Experience // 经验线
@@ -25,9 +26,8 @@ namespace IdleGame.Gameplay
         public EnemyConfig[] enemyConfigs; // 敌人配置列表
 
         [Header("运行时状态")]
-        public RouteType currentRoute = RouteType.Battle;
+        public RouteType currentRoute = RouteType.None;
         public EnemyData currentEnemy; // 当前待战敌人
-        public bool isBattleActive; // 是否正在战斗中
         public float routeTimer; // 路线计时器
 
         [Header("调试信息")]
@@ -50,11 +50,6 @@ namespace IdleGame.Gameplay
         public Action<EnemyData> OnEnemySpawned;
         public Action<bool, EnemyData> OnBattleCompleted; // victory, enemy
 
-        private void Start()
-        {
-            InitializeSystem();
-        }
-
         private void OnDestroy()
         {
             StopAllCoroutines();
@@ -62,55 +57,30 @@ namespace IdleGame.Gameplay
 
         #region 系统初始化
 
-        private void InitializeSystem()
+        public void Initialize()
         {
             // 获取系统引用
             gameManager = GameManager.Instance;
             characterSystem = ServiceLocator.Get<CharacterSystem>();
             logSystem = ServiceLocator.Get<IdleLogSystem>();
-
             battleManager = ServiceLocator.Get<BattleManager>();
 
-            // 验证配置
-            ValidateConfigs();
+            currentRoute = RouteType.None;
 
             // 生成第一个敌人
             SpawnNextEnemy();
 
+            LogMessage("[SpireSystem] 塔层系统初始化完成");
+        }
+
+        public void StartSpire()
+        {
             // 根据当前路线启动对应协程
             SwitchToRoute(currentRoute);
 
             // 启动调试信息更新
             if (showDebugInfo)
                 debugCoroutine = StartCoroutine(DebugInfoCoroutine());
-
-            LogMessage("[SpireSystem] 塔层系统初始化完成");
-        }
-
-        private void ValidateConfigs()
-        {
-            if (battleRouteConfig == null)
-            {
-                battleRouteConfig = ScriptableObject.CreateInstance<RouteConfig>();
-                battleRouteConfig.Initialize("战斗线", 2f, 0, 0);
-                Debug.LogWarning("[SpireSystem] 战斗线配置缺失，使用默认配置");
-            }
-
-            if (economyRouteConfig == null)
-            {
-                economyRouteConfig = ScriptableObject.CreateInstance<RouteConfig>();
-                economyRouteConfig.Initialize("金币线", 1f, 50, 0);
-                Debug.LogWarning("[SpireSystem] 金币线配置缺失，使用默认配置");
-            }
-
-            if (experienceRouteConfig == null)
-            {
-                experienceRouteConfig = ScriptableObject.CreateInstance<RouteConfig>();
-                experienceRouteConfig.Initialize("经验线", 1f, 0, 30);
-                Debug.LogWarning("[SpireSystem] 经验线配置缺失，使用默认配置");
-            }
-
-            if (enemyConfigs == null || enemyConfigs.Length == 0) Debug.LogError("[SpireSystem] 缺少敌人配置！");
         }
 
         #endregion
@@ -210,7 +180,7 @@ namespace IdleGame.Gameplay
                 }
 
                 // 检查BattleManager是否可以开始战斗
-                if (battleManager != null && battleManager.CanStartBattle())
+                if (battleManager)
                 {
                     // 委托给BattleManager执行具体战斗
                     battleManager.StartBattle(currentEnemy);
@@ -404,7 +374,7 @@ namespace IdleGame.Gameplay
             if (currentEnemy == null)
                 return "无敌人";
 
-            if (!isBattleActive)
+            if (!battleManager.isBattleActive)
                 return $"待战敌人: {currentEnemy.enemyName} (Lv.{currentEnemy.recommendedLevel})";
 
             var enemyHpPercent = currentEnemy.currentHP / currentEnemy.maxHP * 100f;
