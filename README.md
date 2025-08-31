@@ -183,6 +183,7 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
 
 ### **Testing Editor Tools**
 ![ScreenShot2](Screenshots/s2.png)
+![ScreenShot3](Screenshots/s3.png)
 - **CharacterDataEditor**: A useful tool for quick build and test (gacha, upgrading, etc.)
 
 ### **Future Plan**
