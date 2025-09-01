@@ -196,6 +196,7 @@ Apply Rewards on Return → Update Character Stats → Continue Progression
 - **Spreadsheet-driven Data**: Designers can manage and balance content and supports backend service as well.
 - **Resource Management**: Hotfix support for scalable live ops and efficient patching
 - **Analytics Integration**: Backend data analytics tools for statistics tracking
+- **Async Task**: Custom async workflow based on UniTask/Coroutine
 
 #### Gameplay
 - **Character Switch**: Allow players to choose the character whichever they like
